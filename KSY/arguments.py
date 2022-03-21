@@ -27,12 +27,6 @@ def get_args():
     parser.add_argument("--logging_dir", type=str, default='./logs', help="log dir")
     parser.add_argument("--logging_steps", type=int, default=100, help="log dir")
 
-    parser.add_argument("--save_total_limit", type=int, default=5, help="number of total save model.")
-    parser.add_argument("--save_steps", type=int, default=500, help="log saving step.")
-    # added by sykim;
-    parser.add_argument("--model_save_dir", type=str, default='./best_model', help="model ckpt")
-
-
     # data
     # added by sykim;
     parser.add_argument("--train_data_dir", type=str, default="../baseline/dataset/train/train.csv", help="data directory")
@@ -66,8 +60,12 @@ def get_args():
                              "`steps`: Evaluate every `eval_steps`"
                              "`epoch`: Evaluate every end of epoch.")
     parser.add_argument("--eval_steps", type=int, default=500, help="number of evaluation steps")
+    # --load_best_model_at_end requires the saving steps to be a round multiple of the evaluation steps, but found 500, which is not a round multiple of 3.
     parser.add_argument("--load_best_model_at_end", type=str2bool, default=True, help="load_best_model_at_end")
-
+    parser.add_argument("--save_total_limit", type=int, default=5, help="number of total save model.")
+    parser.add_argument("--save_steps", type=int, default=500, help="log saving step.")
+    # added by sykim;
+    parser.add_argument("--model_save_dir", type=str, default='./best_model', help="model ckpt")
 
     args = parser.parse_args()
     return args

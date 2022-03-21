@@ -44,6 +44,7 @@ def klue_re_micro_f1(preds, labels):
     no_relation_label_idx = label_list.index("no_relation")
     label_indices = list(range(len(label_list)))
     label_indices.remove(no_relation_label_idx)
+
     return sklearn.metrics.f1_score(labels, preds, average="micro", labels=label_indices) * 100.0
 
 
@@ -67,6 +68,7 @@ def compute_metrics(pred):
     probs = pred.predictions
 
     # calculate accuracy using sklearn's function
+
     f1 = klue_re_micro_f1(preds, labels)
     auprc = klue_re_auprc(probs, labels)
     acc = accuracy_score(labels, preds)  # 리더보드 평가에는 포함되지 않습니다.
@@ -142,9 +144,12 @@ def train(args,reports, exp_full_name):
         eval_steps=args.eval_steps,  # evaluation step.
         load_best_model_at_end=args.load_best_model_at_end,
         # https://docs.wandb.ai/guides/integrations/huggingface
+        # 현재는 기본 Trainer 내부적으로 wandb integration 한 것으로 logging 중
+        # 내부 함수가 복잡해서 추가 metric을 wandb로 logging 하게 코드 리팩토링하는 공수가 좀 들 것 같음
         report_to=reports,
         run_name = exp_full_name,
     )
+
     trainer = Trainer(
         model=model,  # the instantiated 🤗 Transformers model to be trained
         args=training_args,  # training arguments, defined above
@@ -177,12 +182,13 @@ def main():
         # name : 저장되는 실행 이름 (#TODO: 아직 convention 정하지 않음)
         reports = 'wandb'
         exp_full_name = f'{args.user_name}_{args.model_name}_{args.lr}_{args.optimizer}_{args.loss_fn}'
-        # wandb.init(project='klue-re',
-        #            name=exp_total_name)  # nlp-03
-        # wandb.init(project='klue-re',
-        #            name=exp_total_name,
-        #            entity='kimcando')  # nlp-03
+        """
+        # 원래 wandb 시작할 때
+        wandb.init(project='klue-re',
+                  name=exp_total_name,
+                   entity='kimcando')  # nlp-03
         # wandb.config.update(args)
+        """
         print('#######################')
         print(f'Experiments name: {exp_full_name}')
         print('#######################')
