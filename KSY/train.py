@@ -187,7 +187,7 @@ def main():
         # entity : 우리 그룹/팀 이름
 
         wandb.init(project='klue-re',
-                   name=exp_total_name,
+                   name=exp_full_name,
                    entity='boostcamp-nlp3')  # nlp-03
         wandb.config.update(args)
 
