@@ -1,7 +1,8 @@
 import argparse
 
 def str2bool(v):
-    # for boolean
+    # arguments에 유사한 값들끼리 다 boolean 처리 되도록
+
     if isinstance(v, bool):
         return v
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
