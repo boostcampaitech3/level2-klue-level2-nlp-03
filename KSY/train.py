@@ -68,7 +68,6 @@ def compute_metrics(pred):
     probs = pred.predictions
 
     # calculate accuracy using sklearn's function
-
     f1 = klue_re_micro_f1(preds, labels)
     auprc = klue_re_auprc(probs, labels)
     acc = accuracy_score(labels, preds)  # 리더보드 평가에는 포함되지 않습니다.
@@ -90,7 +89,7 @@ def label_to_num(label):
     return num_label
 
 
-def train(args,reports, exp_full_name):
+def train(args,exp_full_name,reports='wandb'):
     # load model and tokenizer
     # MODEL_NAME = "bert-base-uncased"
     MODEL_NAME = args.model_name
@@ -138,14 +137,13 @@ def train(args,reports, exp_full_name):
         logging_dir=args.logging_dir,  # directory for storing logs
         logging_steps=args.logging_steps,  # log saving step.
         evaluation_strategy=args.eval_strategy,  # evaluation strategy to adopt during training
-        # `no`: No evaluation during training.
-        # `steps`: Evaluate every `eval_steps`.
-        # `epoch`: Evaluate every end of epoch.
+                                                # `no`: No evaluation during training.
+                                                # `steps`: Evaluate every `eval_steps`.
+                                                # `epoch`: Evaluate every end of epoch.
         eval_steps=args.eval_steps,  # evaluation step.
         load_best_model_at_end=args.load_best_model_at_end,
         # https://docs.wandb.ai/guides/integrations/huggingface
-        # 현재는 기본 Trainer 내부적으로 wandb integration 한 것으로 logging 중
-        # 내부 함수가 복잡해서 추가 metric을 wandb로 logging 하게 코드 리팩토링하는 공수가 좀 들 것 같음
+        # Hugging face Trainer 내부 integration 된 wandb로 logging
         report_to=reports,
         run_name = exp_full_name,
     )
@@ -163,6 +161,7 @@ def train(args,reports, exp_full_name):
     model.save_pretrained(args.model_save_dir)
 
 def make_dirs(args):
+    # args에 지정된 폴더가 존재하나 해당 폴더가 없을 경우 대비
     # model save
     os.makedirs(args.model_save_dir, exist_ok=True)
     # output
@@ -170,36 +169,38 @@ def make_dirs(args):
 
 
 def main():
+
     args = get_args()
     seed_fix(args.seed)
-
     # make directories
     make_dirs(args)
     # https://docs.wandb.ai/guides/integrations/huggingface
+
+    # 디버깅 때는 wandb 로깅 안하기 위해서
     if args.use_wandb:
-        # entity : 우리 그룹/팀 이름
-        # project : 우리 그룹의 프로젝트 이름
-        # name : 저장되는 실행 이름 (#TODO: 아직 convention 정하지 않음)
-        reports = 'wandb'
+        # TODO; 실험 이름 convention은 천천히 정해볼까요?
         exp_full_name = f'{args.user_name}_{args.model_name}_{args.lr}_{args.optimizer}_{args.loss_fn}'
-        """
-        # 원래 wandb 시작할 때
+        wandb.login()
+
+        # project : 우리 그룹의 프로젝트 이름
+        # name : 저장되는 실험 이름
+        # entity : 우리 그룹/팀 이름
+
         wandb.init(project='klue-re',
-                  name=exp_total_name,
-                   entity='kimcando')  # nlp-03
-        # wandb.config.update(args)
-        """
+                   name=exp_total_name,
+                   entity='boostcamp-nlp3')  # nlp-03
+        wandb.config.update(args)
+
         print('#######################')
         print(f'Experiments name: {exp_full_name}')
         print('#######################')
     else:
-        reports = 'none'
         exp_full_name = ''
         print('@@@@@@@@Notice@@@@@@@@@@')
         print('YOU ARE NOT LOGGING RESULTS NOW')
         print('@@@@@@@@$$$$$$@@@@@@@@@@')
 
-    train(args, reports, exp_full_name)
+    train(args, exp_full_name)
     # only when using notebook
     # wandb.finish()
 
