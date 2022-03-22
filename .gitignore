@@ -2,3 +2,10 @@
 
 #do not ignore
 !.gitignore
+
+wandb/
+__pycache__/
+nohup.out
+
+*.csv
+results/
