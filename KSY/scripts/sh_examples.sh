@@ -1,4 +1,3 @@
-WANDB_PROJECT=klue-re \
 python train.py --model_name klue/bert-base \
                 --use_wandb True \
                 --user_name KSY \
