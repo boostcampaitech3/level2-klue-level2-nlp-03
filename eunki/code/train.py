@@ -5,10 +5,24 @@ import torch
 import sklearn
 import numpy as np
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
-from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification, Trainer, TrainingArguments, RobertaConfig, RobertaTokenizer, RobertaForSequenceClassification, BertTokenizer
+from transformers import AutoTokenizer, AutoConfig, EarlyStoppingCallback, AutoModelForSequenceClassification, Trainer, TrainingArguments, RobertaConfig, RobertaTokenizer, RobertaForSequenceClassification, BertTokenizer
 from load_data import *
 
+# get arguments
+from arguments import get_args
+
+import random
 import wandb
+
+def seed_fix(seed):
+    """seed setting 함수"""
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    np.random.seed(seed)
+    random.seed(seed)
 
 
 def klue_re_micro_f1(preds, labels):
@@ -60,88 +74,128 @@ def compute_metrics(pred):
 
 def label_to_num(label):
   num_label = []
-  with open('dict_label_to_num.pkl', 'rb') as f:
+  with open('/opt/ml/git/level2-klue-level2-nlp-03/eunki/code/dict_label_to_num.pkl', 'rb') as f:
     dict_label_to_num = pickle.load(f)
   for v in label:
     num_label.append(dict_label_to_num[v])
   
   return num_label
 
-def train():
-  # load model and tokenizer
-  # MODEL_NAME = "bert-base-uncased"
-  MODEL_NAME = "klue/roberta-large"
-  tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+def train(args,exp_full_name,reports='wandb'):
+    # load model and tokenizer
+    # MODEL_NAME = "bert-base-uncased"
+    MODEL_NAME = args.model_name
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
-  # load dataset
-  train_dataset = load_data("../dataset/train/train.csv")
-  # dev_dataset = load_data("../dataset/train/dev.csv") # validation용 데이터는 따로 만드셔야 합니다.
+    # load dataset
+    train_dataset = load_data(args.train_data_dir)
+    # dev_dataset = load_data("../dataset/train/dev.csv") # validation용 데이터는 따로 만드셔야 합니다.
 
-  train_label = label_to_num(train_dataset['label'].values)
-  # dev_label = label_to_num(dev_dataset['label'].values)
+    train_label = label_to_num(train_dataset['label'].values)
+    # dev_label = label_to_num(dev_dataset['label'].values)
 
-  # tokenizing dataset
-  tokenized_train = tokenized_dataset(train_dataset, tokenizer)
-  # tokenized_dev = tokenized_dataset(dev_dataset, tokenizer)
+    # tokenizing dataset
+    tokenized_train = tokenized_dataset(train_dataset, tokenizer)
+    # tokenized_dev = tokenized_dataset(dev_dataset, tokenizer)
 
-  # make dataset for pytorch.
-  RE_train_dataset = RE_Dataset(tokenized_train, train_label)
-  # RE_dev_dataset = RE_Dataset(tokenized_dev, dev_label)
+    # make dataset for pytorch.
+    RE_train_dataset = RE_Dataset(tokenized_train, train_label)
+    # RE_dev_dataset = RE_Dataset(tokenized_dev, dev_label)
 
-  device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
 
-  print(device)
-  # setting model hyperparameter
-  model_config =  AutoConfig.from_pretrained(MODEL_NAME)
-  model_config.num_labels = 30
+    print(device)
+    # setting model hyperparameter
+    model_config = AutoConfig.from_pretrained(MODEL_NAME)
+    model_config.num_labels = args.num_labels
 
-  model =  AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
-  print(model.config)
-  model.parameters
-  model.to(device)
-  
-  wandb.watch(model)
-  
-  # 사용한 option 외에도 다양한 option들이 있습니다.
-  # https://huggingface.co/transformers/main_classes/trainer.html#trainingarguments 참고해주세요.
-  training_args = TrainingArguments(
-    output_dir='./results',          # output directory
-    save_total_limit=5,              # number of total save model.
-    save_steps=500,                 # model saving step.
-    num_train_epochs=10,              # total number of training epochs
-    learning_rate=5e-5,               # learning_rate
-    per_device_train_batch_size=64,  # batch size per device during training
-    per_device_eval_batch_size=64,   # batch size for evaluation
-    warmup_steps=500,                # number of warmup steps for learning rate scheduler
-    weight_decay=0.01,               # strength of weight decay
-    logging_dir='./logs',            # directory for storing logs
-    logging_steps=100,              # log saving step.
-    evaluation_strategy='steps', # evaluation strategy to adopt during training
-                                # `no`: No evaluation during training.
-                                # `steps`: Evaluate every `eval_steps`.
-                                # `epoch`: Evaluate every end of epoch.
-    eval_steps = 500,            # evaluation step.
-    load_best_model_at_end = True ,
-    
-  )
-  trainer = Trainer(
-    model=model,                         # the instantiated 🤗 Transformers model to be trained
-    args=training_args,                  # training arguments, defined above
-    train_dataset=RE_train_dataset,         # training dataset
-    eval_dataset=RE_train_dataset,             # evaluation dataset
-    compute_metrics=compute_metrics         # define metrics function
-    report_to='wandb'  # log visualization tool.
-    run_name="roberta-test"  # name of the W&B run (optional)
-  )
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
+    print(model.config)
+    model.parameters
+    model.to(device)
 
-  # train model
-  trainer.train()
-  model.save_pretrained('./best_model')
+    # 사용한 option 외에도 다양한 option들이 있습니다.
+    # https://huggingface.co/transformers/main_classes/trainer.html#trainingarguments 참고해주세요.
+    training_args = TrainingArguments(
+        output_dir=args.output_dir,  # output directory
+        save_total_limit=args.save_total_limit,  # number of total save model.
+        save_steps=args.save_steps,  # model saving step.
+        num_train_epochs=args.epochs,  # total number of training epochs
+        learning_rate=args.lr,  # learning_rate
+        per_device_train_batch_size=args.train_bs,  # batch size per device during training
+        per_device_eval_batch_size=args.eval_bs,  # batch size for evaluation
+        warmup_steps=args.warmup_steps,  # number of warmup steps for learning rate scheduler
+        weight_decay=args.weight_decay,  # strength of weight decay
+        logging_dir=args.logging_dir,  # directory for storing logs
+        logging_steps=args.logging_steps,  # log saving step.
+        evaluation_strategy=args.eval_strategy,  # evaluation strategy to adopt during training
+                                                # `no`: No evaluation during training.
+                                                # `steps`: Evaluate every `eval_steps`.
+                                                # `epoch`: Evaluate every end of epoch.
+        eval_steps=args.eval_steps,  # evaluation step.
+        load_best_model_at_end=args.load_best_model_at_end,
+        # https://docs.wandb.ai/guides/integrations/huggingface
+        # Hugging face Trainer 내부 integration 된 wandb로 logging
+        report_to=reports,
+        run_name = exp_full_name,
+    )
+
+    trainer = Trainer(
+        model=model,  # the instantiated 🤗 Transformers model to be trained
+        args=training_args,  # training arguments, defined above
+        train_dataset=RE_train_dataset,  # training dataset
+        eval_dataset=RE_train_dataset,  # evaluation dataset
+        compute_metrics=compute_metrics,  # define metrics function
+        callbacks= [EarlyStoppingCallback(early_stopping_patience= 3)]
+    )
+
+    # train model
+    trainer.train()
+    model.save_pretrained(args.model_save_dir)
+
+def make_dirs(args):
+    # args에 지정된 폴더가 존재하나 해당 폴더가 없을 경우 대비
+    # model save
+    os.makedirs(args.model_save_dir, exist_ok=True)
+    # output
+    os.makedirs(args.output_dir, exist_ok=True)
+
 
 def main():
-  wandb.login()
-  wandb.init(project='Eunki', entity='boostcamp-nlp3', name='test')
-  train()
+
+  args = get_args()
+  seed_fix(args.seed)
+  # make directories
+  make_dirs(args)
+    # https://docs.wandb.ai/guides/integrations/huggingface
+
+    # 디버깅 때는 wandb 로깅 안하기 위해서
+  if args.use_wandb:
+    # TODO; 실험 이름 convention은 천천히 정해볼까요?
+    exp_full_name = f'{args.user_name}_{args.model_name}_{args.lr}_{args.optimizer}_{args.loss_fn}'
+    wandb.login()
+
+    # project : 우리 그룹의 프로젝트 이름
+    # name : 저장되는 실험 이름
+     # entity : 우리 그룹/팀 이름
+
+    wandb.init(project='Eunki',
+                name=exp_full_name,
+                entity='boostcamp-nlp3')  # nlp-03
+    wandb.config.update(args)
+
+    print('#######################')
+    print(f'Experiments name: {exp_full_name}')
+    print('#######################')
+  else:
+    exp_full_name = ''
+    print('@@@@@@@@Notice@@@@@@@@@@')
+    print('YOU ARE NOT LOGGING RESULTS NOW')
+    print('@@@@@@@@$$$$$$@@@@@@@@@@')
+
+  train(args, exp_full_name)
+  # only when using notebook
+  # wandb.finish()
 
 
 if __name__ == '__main__':
