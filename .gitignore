@@ -2,3 +2,4 @@
 
 #do not ignore
 !.gitignore
+*.json
