@@ -98,6 +98,8 @@ def train(args,exp_full_name,reports='wandb'):
     # dev_label = label_to_num(dev_dataset['label'].values)
     kfold= StratifiedKFold(n_splits= 5, shuffle= True, random_state= 42)
     for fold, (train_idx, val_idx) in enumerate(kfold.split(total_train_dataset, total_train_label)):
+      
+      print("fold : ", fold)
 
       #run= wandb.init(project= 'klue', entity= 'boostcamp-nlp3', name= f'KFOLD_{fold}_{args.wandb_path}')
       
@@ -163,7 +165,7 @@ def train(args,exp_full_name,reports='wandb'):
           weight_decay=args.weight_decay,  # strength of weight decay
           logging_dir=args.logging_dir,  # directory for storing logs
           logging_steps=args.logging_steps,  # log saving step.
-          evaluation_strategy=args.eval_strategy,  # evaluation strategy to adopt during training
+          evaluation_strategy=args.eval_strategy, # evaluation strategy to adopt during training
                                                   # `no`: No evaluation during training.
                                                   # `steps`: Evaluate every `eval_steps`.
                                                   # `epoch`: Evaluate every end of epoch.
@@ -189,12 +191,13 @@ def train(args,exp_full_name,reports='wandb'):
       # train model
       trainer.train()
       #model.save_pretrained(args.model_save_dir)
-      if not os.path.exists(f'{args.save_dir}_{fold}'):
-          os.makedirs(f'{args.save_dir}_{fold}')
-      torch.save(model.state_dict(), os.path.join(f'{args.save_dir}_{fold}', 'pytorch_model.bin'))
+      if not os.path.exists(f'{args.model_save_dir}_{fold}'):
+          os.makedirs(f'{args.model_save_dir}_{fold}')
+      torch.save(model.state_dict(), os.path.join(f'{args.model_save_dir}_{fold}', 'pytorch_model.bin'))
       print(f'fold{fold} fin!')
       
-      # run.finish()
+      
+      #run.finish()
 
 def make_dirs(args):
     # args에 지정된 폴더가 존재하나 해당 폴더가 없을 경우 대비
