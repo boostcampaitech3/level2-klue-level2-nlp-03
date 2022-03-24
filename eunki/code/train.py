@@ -5,6 +5,7 @@ import torch
 import sklearn
 import numpy as np
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
+from sklearn.model_selection import StratifiedKFold
 from transformers import AutoTokenizer, AutoConfig, EarlyStoppingCallback, AutoModelForSequenceClassification, Trainer, TrainingArguments, RobertaConfig, RobertaTokenizer, RobertaForSequenceClassification, BertTokenizer
 from load_data import *
 
@@ -88,70 +89,112 @@ def train(args,exp_full_name,reports='wandb'):
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
     # load dataset
-    train_dataset = load_data(args.train_data_dir)
+    total_train_dataset = load_data(args.train_data_dir)
+    # 먼저 중복여부 판별을 위한 코드
+    total_train_dataset['is_duplicated'] = total_train_dataset['sentence'].duplicated(keep=False)
     # dev_dataset = load_data("../dataset/train/dev.csv") # validation용 데이터는 따로 만드셔야 합니다.
-
-    train_label = label_to_num(train_dataset['label'].values)
+    result = label_to_num(total_train_dataset['label'].values)
+    total_train_label = pd.DataFrame(data = result, columns = ['label'])
     # dev_label = label_to_num(dev_dataset['label'].values)
+    kfold= StratifiedKFold(n_splits= 5, shuffle= True, random_state= 42)
+    for fold, (train_idx, val_idx) in enumerate(kfold.split(total_train_dataset, total_train_label)):
 
-    # tokenizing dataset
-    tokenized_train = tokenized_dataset(train_dataset, tokenizer)
-    # tokenized_dev = tokenized_dataset(dev_dataset, tokenizer)
+      #run= wandb.init(project= 'klue', entity= 'boostcamp-nlp3', name= f'KFOLD_{fold}_{args.wandb_path}')
+      
+      train_dataset= total_train_dataset.loc[train_idx]
+      val_dataset= total_train_dataset.loc[val_idx]
+      train_label = total_train_label.loc[train_idx]
+      val_label = total_train_label.loc[val_idx]
 
-    # make dataset for pytorch.
-    RE_train_dataset = RE_Dataset(tokenized_train, train_label)
-    # RE_dev_dataset = RE_Dataset(tokenized_dev, dev_label)
+      train_dataset.reset_index(drop= True, inplace= True)
+      val_dataset.reset_index(drop= True, inplace= True)
+      train_label.reset_index(drop= True, inplace= True)
+      val_label.reset_index(drop= True, inplace= True)
+      
+      temp = []    
+      
+      for val_idx in val_dataset.index:
+          if val_dataset['is_duplicated'].iloc[val_idx] == True:
+              if val_dataset['sentence'].iloc[val_idx] in train_dataset['sentence'].values:
+                  train_dataset.append(val_dataset.iloc[val_idx])
+                  train_label.append(val_label.iloc[val_idx])
+                  temp.append(val_idx)
+              
+      val_dataset.drop(temp, inplace= True, axis= 0)
+      val_label.drop(temp, inplace= True, axis= 0)
 
-    device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
+      train_label_list = train_label['label'].values.tolist()
+      val_label_list = val_label['label'].values.tolist()
 
-    print(device)
-    # setting model hyperparameter
-    model_config = AutoConfig.from_pretrained(MODEL_NAME)
-    model_config.num_labels = args.num_labels
+      
 
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
-    print(model.config)
-    model.parameters
-    model.to(device)
 
-    # 사용한 option 외에도 다양한 option들이 있습니다.
-    # https://huggingface.co/transformers/main_classes/trainer.html#trainingarguments 참고해주세요.
-    training_args = TrainingArguments(
-        output_dir=args.output_dir,  # output directory
-        save_total_limit=args.save_total_limit,  # number of total save model.
-        save_steps=args.save_steps,  # model saving step.
-        num_train_epochs=args.epochs,  # total number of training epochs
-        learning_rate=args.lr,  # learning_rate
-        per_device_train_batch_size=args.train_bs,  # batch size per device during training
-        per_device_eval_batch_size=args.eval_bs,  # batch size for evaluation
-        warmup_steps=args.warmup_steps,  # number of warmup steps for learning rate scheduler
-        weight_decay=args.weight_decay,  # strength of weight decay
-        logging_dir=args.logging_dir,  # directory for storing logs
-        logging_steps=args.logging_steps,  # log saving step.
-        evaluation_strategy=args.eval_strategy,  # evaluation strategy to adopt during training
-                                                # `no`: No evaluation during training.
-                                                # `steps`: Evaluate every `eval_steps`.
-                                                # `epoch`: Evaluate every end of epoch.
-        eval_steps=args.eval_steps,  # evaluation step.
-        load_best_model_at_end=args.load_best_model_at_end,
-        # https://docs.wandb.ai/guides/integrations/huggingface
-        # Hugging face Trainer 내부 integration 된 wandb로 logging
-        report_to=reports,
-        run_name = exp_full_name,
-    )
+      # tokenizing dataset
+      tokenized_train = tokenized_dataset(train_dataset, tokenizer)
+      tokenized_dev = tokenized_dataset(val_dataset, tokenizer)
 
-    trainer = Trainer(
-        model=model,  # the instantiated 🤗 Transformers model to be trained
-        args=training_args,  # training arguments, defined above
-        train_dataset=RE_train_dataset,  # training dataset
-        eval_dataset=RE_train_dataset,  # evaluation dataset
-        compute_metrics=compute_metrics,  # define metrics function
-        callbacks= [EarlyStoppingCallback(early_stopping_patience= 3)]
-    )
+      # make dataset for pytorch.
+      RE_train_dataset = RE_Dataset(tokenized_train, train_label_list)
+      RE_dev_dataset = RE_Dataset(tokenized_dev, val_label_list)
 
-    # train model
-    trainer.train()
-    model.save_pretrained(args.model_save_dir)
+      device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
+
+      print(device)
+      # setting model hyperparameter
+      model_config = AutoConfig.from_pretrained(MODEL_NAME)
+      model_config.num_labels = args.num_labels
+
+      model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
+      print(model.config)
+      model.parameters
+      model.to(device)
+
+      # 사용한 option 외에도 다양한 option들이 있습니다.
+      # https://huggingface.co/transformers/main_classes/trainer.html#trainingarguments 참고해주세요.
+      training_args = TrainingArguments(
+          output_dir=args.output_dir,  # output directory
+          save_total_limit=1,  # number of total save model.
+          save_steps=args.save_steps,  # model saving step.
+          num_train_epochs=args.epochs,  # total number of training epochs
+          learning_rate=args.lr,  # learning_rate
+          per_device_train_batch_size=args.train_bs,  # batch size per device during training
+          per_device_eval_batch_size=args.eval_bs,  # batch size for evaluation
+          warmup_steps=args.warmup_steps,  # number of warmup steps for learning rate scheduler
+          weight_decay=args.weight_decay,  # strength of weight decay
+          logging_dir=args.logging_dir,  # directory for storing logs
+          logging_steps=args.logging_steps,  # log saving step.
+          evaluation_strategy=args.eval_strategy,  # evaluation strategy to adopt during training
+                                                  # `no`: No evaluation during training.
+                                                  # `steps`: Evaluate every `eval_steps`.
+                                                  # `epoch`: Evaluate every end of epoch.
+          eval_steps=args.eval_steps,  # evaluation step.
+          load_best_model_at_end=args.load_best_model_at_end,
+          # https://docs.wandb.ai/guides/integrations/huggingface
+          # Hugging face Trainer 내부 integration 된 wandb로 logging
+          group_by_length= True,
+          
+          report_to=reports,
+          run_name = exp_full_name,
+      )
+
+      trainer = Trainer(
+          model=model,  # the instantiated 🤗 Transformers model to be trained
+          args=training_args,  # training arguments, defined above
+          train_dataset=RE_train_dataset,  # training dataset
+          eval_dataset=RE_dev_dataset,  # evaluation dataset
+          compute_metrics=compute_metrics,  # define metrics function
+          callbacks= [EarlyStoppingCallback(early_stopping_patience= 3)]
+      )
+
+      # train model
+      trainer.train()
+      #model.save_pretrained(args.model_save_dir)
+      if not os.path.exists(f'{args.save_dir}_{fold}'):
+          os.makedirs(f'{args.save_dir}_{fold}')
+      torch.save(model.state_dict(), os.path.join(f'{args.save_dir}_{fold}', 'pytorch_model.bin'))
+      print(f'fold{fold} fin!')
+      
+      # run.finish()
 
 def make_dirs(args):
     # args에 지정된 폴더가 존재하나 해당 폴더가 없을 경우 대비
