@@ -161,7 +161,7 @@ class Lite(LightningLite):
             learning_rate=args.lr,  # learning_rate
             per_device_train_batch_size=args.train_bs,  # batch size per device during training
             per_device_eval_batch_size=args.eval_bs,  # batch size for evaluation
-            warmup_steps=500,  # number of warmup steps for learning rate scheduler
+            warmup_steps=args.warmup_steps,  # number of warmup steps for learning rate scheduler
             weight_decay=args.weight_decay,  # strength of weight decay
             logging_dir=args.logging_dir,  # directory for storing logs
             logging_steps=args.logging_steps,  # log saving step.
