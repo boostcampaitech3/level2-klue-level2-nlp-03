@@ -118,16 +118,21 @@ def train(args,exp_full_name,reports='wandb'):
         train_dataset, eval_dataset = load_split_dup_data(args.train_data_dir,
                                                       args.seed,
                                                       args.eval_ratio)
+        train_label = label_to_num(train_dataset['label'].values)
+        eval_label = label_to_num(eval_dataset['label'].values)
+
     elif args.split_mode =='split-basic':
         # 그냥 stratified
         train_dataset, eval_dataset = load_split_data(args.train_data_dir,
                                                           args.seed,
                                                           args.eval_ratio)
+        train_label = label_to_num(train_dataset['label'].values)
+        eval_label = label_to_num(eval_dataset['label'].values)
 
-    # dev_dataset = load_data("../dataset/train/dev.csv") # validation용 데이터는 따로 만드셔야 합니다.
-    train_label = label_to_num(train_dataset['label'].values)
-    eval_label = label_to_num(eval_dataset['label'].values)
-    # dev_label = label_to_num(dev_dataset['label'].values)
+    elif args.split_mode =='split-eunki':
+        train_dataset, eval_dataset, train_label, eval_label = load_split_eunki_data(args.train_data_dir,
+                               args.seed,
+                               args.eval_ratio)
 
     # tokenizing dataset
     tokenized_train = tokenized_dataset(train_dataset, tokenizer)
