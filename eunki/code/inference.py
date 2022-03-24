@@ -1,4 +1,4 @@
-from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification, Trainer, TrainingArguments
+from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification, Trainer, TrainingArguments, AutoModel
 from torch.utils.data import DataLoader
 from load_data import *
 import pandas as pd
@@ -9,8 +9,6 @@ import pickle as pickle
 import numpy as np
 import argparse
 from tqdm import tqdm
-
-from dataset import *
 
 def inference(model, tokenized_sent, device):
   """
@@ -62,47 +60,52 @@ def load_test_dataset(dataset_dir, tokenizer):
   return test_dataset['id'], tokenized_test, test_label
 
 def main(args):
-    print('main inference start')
+  """
+    주어진 dataset csv 파일과 같은 형태일 경우 inference 가능한 코드입니다.
+  """
+  device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+  # load tokenizer
+  Tokenizer_NAME = "klue/roberta-large"
+  tokenizer = AutoTokenizer.from_pretrained(Tokenizer_NAME)
 
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    tokenizer= AutoTokenizer.from_pretrained(args.model)
-
-    df_list= []
-    for i in range(args.kfold):
-        print(f'KFOLD : {i} inference start !')
-        
-        MODEL_NAME = args.model_dir + f'/model_{i}.bin'
-        model_config = AutoConfig.from_pretrained(MODEL_NAME)
-        model_config.num_labels = args.num_labels
-        model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
-        model.model.resize_token_embeddings(tokenizer.vocab_size + args.add_token)
-
-        best_state_dict= torch.load(os.path.join(f'{args.model_path}_{i}', 'pytorch_model.bin'))
-        model.load_state_dict(best_state_dict)
-        model.to(device)
-        
-        test_id, test_dataset, test_label= load_test_dataset(args.test_path, tokenizer, args)
-        testset= Dataset(test_dataset, test_label)
-
-        pred_answer, output_prob= inference(model, testset, device, args)
-        pred_answer= num_to_label(pred_answer)
-        print(len(test_id), len(pred_answer), len(output_prob))
-
-        output = pd.DataFrame({'id':test_id,'pred_label':pred_answer,'probs':output_prob,})
-
-        if not os.path.exists(args.save_dir):
-            os.makedirs(args.save_dir)
-        output.to_csv(os.path.join(args.save_dir, f'submission{i}.csv'), index= False)
-        
-        print(f'KFOLD : {i} inference fin !')
-    print('FIN')
-    
-if __name__ == '__main__':
-  parser = argparse.ArgumentParser()
+  ## load my model
   
+   # model dir.
+  model_config= AutoConfig.from_pretrained(Tokenizer_NAME)
+  model_config.num_labels= 30
+  model= AutoModelForSequenceClassification.from_pretrained(Tokenizer_NAME, config= model_config)
+  
+  best_state_dict= torch.load(args.model_dir)
+  model.load_state_dict(best_state_dict)
+  model.parameters
+  model.to(device)
+
+  ## load test datset
+  test_dataset_dir = "../dataset/test/test_data.csv"
+  test_id, test_dataset, test_label = load_test_dataset(test_dataset_dir, tokenizer)
+  Re_test_dataset = RE_Dataset(test_dataset ,test_label)
+
+  ## predict answer
+  pred_answer, output_prob = inference(model, Re_test_dataset, device) # model에서 class 추론
+  pred_answer = num_to_label(pred_answer) # 숫자로 된 class를 원래 문자열 라벨로 변환.
+  
+  ## make csv file with predicted answer
+  #########################################################
+  # 아래 directory와 columns의 형태는 지켜주시기 바랍니다.
+  output = pd.DataFrame({'id':test_id,'pred_label':pred_answer,'probs':output_prob,})
+  fold_num = args.fold_num
+  if not os.path.exists("./prediction"):
+    os.makedirs("./prediction")
+  output.to_csv(f'./prediction/submission_{fold_num}.csv', index=False) # 최종적으로 완성된 예측한 라벨 csv 파일 형태로 저장.
+  #### 필수!! ##############################################
+  print('---- Finish! ----')
+if __name__ == '__main__':    
   # model dir
-  parser.add_argument('--model_dir', type=str, default="./best_model")
-  args = parser.parse_args()
-  print(args)
-  main(args)
+  for i in range (5):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--model_dir', type=str, default=f"./best_model_{i}/pytorch_model.bin")
+    parser.add_argument('--fold_num', type=str, default=i)
+    args = parser.parse_args()
+    print(args)
+    main(args)
   
