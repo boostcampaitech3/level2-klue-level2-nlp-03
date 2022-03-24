@@ -21,6 +21,7 @@ class RE_Dataset(torch.utils.data.Dataset):
   def __len__(self):
     return len(self.labels)
 
+
 def preprocessing_dataset(dataset):
   """ 처음 불러온 csv 파일을 원하는 형태의 DataFrame으로 변경 시켜줍니다."""
   subject_entity = []
@@ -115,6 +116,58 @@ def load_split_dup_data(dataset_dir, seed=42, eval_ratio=0.2):
 
     return train_dataset, eval_dataset
 
+def label_to_num(label):
+    num_label = []
+    with open('dict_label_to_num.pkl', 'rb') as f:
+        dict_label_to_num = pickle.load(f)
+    for v in label:
+        num_label.append(dict_label_to_num[v])
+
+    return num_label
+
+def load_split_eunki_data(dataset_dir, sedd=42, eval_ratio=0.2):
+    """
+    은기님 구현 로직대로 우선 StratifiedKFold 중 1개만 선택
+    validation 에 있는 문장이 train에 나온다면 맞바꿔서 개별 중복 문장은 training 또는 validation에만 포함되게 함
+    """
+    from sklearn.model_selection import StratifiedKFold
+
+    pd_dataset = pd.read_csv(dataset_dir)
+    total_train_dataset = preprocessing_dataset(pd_dataset)
+
+    total_train_dataset['is_duplicated'] = total_train_dataset['sentence'].duplicated(keep=False)
+    result = label_to_num(total_train_dataset['label'].values)
+
+    total_train_label = pd.DataFrame(data=result, columns=['label'])
+    kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    train_idx, val_idx = list(kfold.split(total_train_dataset, total_train_label))[0]
+
+    train_dataset = total_train_dataset.loc[train_idx]
+    val_dataset = total_train_dataset.loc[val_idx]
+    train_label = total_train_label.loc[train_idx]
+    val_label = total_train_label.loc[val_idx]
+
+    train_dataset.reset_index(drop=True, inplace=True)
+    val_dataset.reset_index(drop=True, inplace=True)
+    train_label.reset_index(drop=True, inplace=True)
+    val_label.reset_index(drop=True, inplace=True)
+
+    temp = []
+
+    for val_idx in val_dataset.index:
+        if val_dataset['is_duplicated'].iloc[val_idx] == True:
+            if val_dataset['sentence'].iloc[val_idx] in train_dataset['sentence'].values:
+                train_dataset.append(val_dataset.iloc[val_idx])
+                train_label.append(val_label.iloc[val_idx])
+                temp.append(val_idx)
+
+    val_dataset.drop(temp, inplace=True, axis=0)
+    val_label.drop(temp, inplace=True, axis=0)
+
+    train_label_list = train_label['label'].values.tolist()
+    val_label_list = val_label['label'].values.tolist()
+    return train_dataset, val_dataset, train_label_list, val_label_list
+
 def load_split_data(dataset_dir, seed=42, eval_ratio=0.2):
     """ csv 파일을 경로에 맡게 불러오고,
     duplicated cls를 고려하지 않고  train, eval에 맞게 분리해줍니다
@@ -155,3 +208,19 @@ def tokenized_dataset(dataset, tokenizer):
       add_special_tokens=True,
       )
   return tokenized_sentences
+
+if __name__ == '__main__':
+    from transformers import AutoTokenizer
+    data_dir = "../baseline/dataset/train/train.csv"
+    MODEL_NAME = "klue/bert-base"
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+
+    train_dataset, val_dataset, train_label_list, val_label_list = load_split_eunki_data(data_dir)
+    # tokenizing dataset
+    tokenized_train = tokenized_dataset(train_dataset, tokenizer)
+    tokenized_eval = tokenized_dataset(val_dataset, tokenizer)
+    # tokenized_dev = tokenized_dataset(dev_dataset, tokenizer)
+
+    # make dataset for pytorch.
+    RE_train_dataset = RE_Dataset(tokenized_train, train_label_list)
+    RE_eval_dataset = RE_Dataset(tokenized_eval, val_label_list)
