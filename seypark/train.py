@@ -124,7 +124,7 @@ def label_to_num(label):
 
 
 class Lite(LightningLite):
-    def run(self):
+    def run(self, args, exp_full_name, reports="wandb"):
         # load model and tokenizer
         MODEL_NAME = args.model_name
         tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
@@ -227,7 +227,7 @@ def main():
         print("YOU ARE NOT LOGGING RESULTS NOW")
         print("@@@@@@@@$$$$$$@@@@@@@@@@")
 
-    Lite(devices=1, accelerator="gpu", precision="bf16").run()
+    Lite(devices=1, accelerator="gpu", precision="bf16").run(args, exp_full_name)
     # only when using notebook
     # wandb.finish()
 
