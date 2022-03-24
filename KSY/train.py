@@ -17,6 +17,24 @@ from arguments import get_args
 import wandb
 import random
 
+from sklearn.metrics import confusion_matrix
+from utils import plot_cm_by_num_samples, plot_cm_by_ratio
+from custom.callback import customWandbCallback
+    #customTrainerState,customTrainerControl,customTrainerCallback
+from custom.trainer import customTrainer
+
+label_list = ['no_relation', 'org:top_members/employees', 'org:members',
+                  'org:product', 'per:title', 'org:alternate_names',
+                  'per:employee_of', 'org:place_of_headquarters', 'per:product',
+                  'org:number_of_employees/members', 'per:children',
+                  'per:place_of_residence', 'per:alternate_names',
+                  'per:other_family', 'per:colleagues', 'per:origin', 'per:siblings',
+                  'per:spouse', 'org:founded', 'org:political/religious_affiliation',
+                  'org:member_of', 'per:parents', 'org:dissolved',
+                  'per:schools_attended', 'per:date_of_death', 'per:date_of_birth',
+                  'per:place_of_birth', 'per:place_of_death', 'org:founded_by',
+                  'per:religion']
+
 def seed_fix(seed):
     """seed setting 함수"""
     torch.manual_seed(seed)
@@ -30,17 +48,8 @@ def seed_fix(seed):
 
 def klue_re_micro_f1(preds, labels):
     """KLUE-RE micro f1 (except no_relation)"""
-    label_list = ['no_relation', 'org:top_members/employees', 'org:members',
-                  'org:product', 'per:title', 'org:alternate_names',
-                  'per:employee_of', 'org:place_of_headquarters', 'per:product',
-                  'org:number_of_employees/members', 'per:children',
-                  'per:place_of_residence', 'per:alternate_names',
-                  'per:other_family', 'per:colleagues', 'per:origin', 'per:siblings',
-                  'per:spouse', 'org:founded', 'org:political/religious_affiliation',
-                  'org:member_of', 'per:parents', 'org:dissolved',
-                  'per:schools_attended', 'per:date_of_death', 'per:date_of_birth',
-                  'per:place_of_birth', 'per:place_of_death', 'org:founded_by',
-                  'per:religion']
+    global label_list
+
     no_relation_label_idx = label_list.index("no_relation")
     label_indices = list(range(len(label_list)))
     label_indices.remove(no_relation_label_idx)
@@ -63,6 +72,8 @@ def klue_re_auprc(probs, labels):
 
 def compute_metrics(pred):
     """ validation을 위한 metrics function """
+    global label_list
+
     labels = pred.label_ids
     preds = pred.predictions.argmax(-1)
     probs = pred.predictions
@@ -71,11 +82,16 @@ def compute_metrics(pred):
     f1 = klue_re_micro_f1(preds, labels)
     auprc = klue_re_auprc(probs, labels)
     acc = accuracy_score(labels, preds)  # 리더보드 평가에는 포함되지 않습니다.
+    conf = confusion_matrix(labels, preds)
+    fig1 = plot_cm_by_num_samples(conf, label_list)
+    fig2 = plot_cm_by_ratio(conf, label_list)
 
     return {
         'micro f1 score': f1,
         'auprc': auprc,
         'accuracy': acc,
+        'cm_samples': fig1,
+        'cm_ratio': fig2
     }
 
 
@@ -96,18 +112,36 @@ def train(args,exp_full_name,reports='wandb'):
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
     # load dataset
-    train_dataset = load_data(args.train_data_dir)
-    # dev_dataset = load_data("../dataset/train/dev.csv") # validation용 데이터는 따로 만드셔야 합니다.
+    # train_dataset = load_data(args.train_data_dir)
+    if args.split_mode =='split-dup':
+        # duplicated 고려한 버전
+        train_dataset, eval_dataset = load_split_dup_data(args.train_data_dir,
+                                                      args.seed,
+                                                      args.eval_ratio)
+        train_label = label_to_num(train_dataset['label'].values)
+        eval_label = label_to_num(eval_dataset['label'].values)
 
-    train_label = label_to_num(train_dataset['label'].values)
-    # dev_label = label_to_num(dev_dataset['label'].values)
+    elif args.split_mode =='split-basic':
+        # 그냥 stratified
+        train_dataset, eval_dataset = load_split_data(args.train_data_dir,
+                                                          args.seed,
+                                                          args.eval_ratio)
+        train_label = label_to_num(train_dataset['label'].values)
+        eval_label = label_to_num(eval_dataset['label'].values)
+
+    elif args.split_mode =='split-eunki':
+        train_dataset, eval_dataset, train_label, eval_label = load_split_eunki_data(args.train_data_dir,
+                               args.seed,
+                               args.eval_ratio)
 
     # tokenizing dataset
     tokenized_train = tokenized_dataset(train_dataset, tokenizer)
+    tokenized_eval = tokenized_dataset(eval_dataset, tokenizer)
     # tokenized_dev = tokenized_dataset(dev_dataset, tokenizer)
 
     # make dataset for pytorch.
     RE_train_dataset = RE_Dataset(tokenized_train, train_label)
+    RE_eval_dataset = RE_Dataset(tokenized_eval, eval_label)
     # RE_dev_dataset = RE_Dataset(tokenized_dev, dev_label)
 
     device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
@@ -148,12 +182,13 @@ def train(args,exp_full_name,reports='wandb'):
         run_name = exp_full_name,
     )
 
-    trainer = Trainer(
+    trainer = customTrainer(
         model=model,  # the instantiated 🤗 Transformers model to be trained
         args=training_args,  # training arguments, defined above
         train_dataset=RE_train_dataset,  # training dataset
-        eval_dataset=RE_train_dataset,  # evaluation dataset
-        compute_metrics=compute_metrics  # define metrics function
+        eval_dataset=RE_eval_dataset,  # evaluation dataset
+        compute_metrics=compute_metrics , # define metrics function
+        callbacks = [customWandbCallback()]
     )
 
     # train model
@@ -175,21 +210,24 @@ def main():
     # make directories
     make_dirs(args)
     # https://docs.wandb.ai/guides/integrations/huggingface
-
+    # os.environ["WANDB_DISABLED"] = "true"
     # 디버깅 때는 wandb 로깅 안하기 위해서
     if args.use_wandb:
         # TODO; 실험 이름 convention은 천천히 정해볼까요?
-        exp_full_name = f'{args.user_name}_{args.model_name}_{args.lr}_{args.optimizer}_{args.loss_fn}'
+        exp_full_name = f'{args.user_name}_{args.model_name}_{args.split_mode}_{args.lr}_{args.optimizer}_{args.loss_fn}'
         wandb.login()
 
         # project : 우리 그룹의 프로젝트 이름
         # name : 저장되는 실험 이름
         # entity : 우리 그룹/팀 이름
 
-        wandb.init(project='klue-re',
+        wandb.init(project='soyeon',
                    name=exp_full_name,
                    entity='boostcamp-nlp3')  # nlp-03
-        wandb.config.update(args)
+        # wandb.init(project='klue-re',
+        #            name=exp_full_name,
+        #            entity='kimcando')  # nlp-03
+        # wandb.config.update(args)
 
         print('#######################')
         print(f'Experiments name: {exp_full_name}')
@@ -200,7 +238,7 @@ def main():
         print('YOU ARE NOT LOGGING RESULTS NOW')
         print('@@@@@@@@$$$$$$@@@@@@@@@@')
 
-    train(args, exp_full_name)
+    train(args, exp_full_name,reports='none')
     # only when using notebook
     # wandb.finish()
 

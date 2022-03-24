@@ -33,6 +33,7 @@ def get_args():
     parser.add_argument("--train_data_dir", type=str, default="../baseline/dataset/train/train.csv", help="data directory")
     parser.add_argument("--test_data_dir", type=str, default="../baseline/dataset/test/test.csv", help="data directory")
     parser.add_argument("--eval_ratio", type=float, default=0.2, help="training/eval split ratio")
+    parser.add_argument("--split_mode", type=str, default='dup', help="strategy to split train, test")
 
     # model
     # added by sykim;
