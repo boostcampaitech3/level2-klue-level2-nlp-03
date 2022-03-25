@@ -227,7 +227,7 @@ def main():
         # wandb.init(project='klue-re',
         #            name=exp_full_name,
         #            entity='kimcando')  # nlp-03
-        # wandb.config.update(args)
+        wandb.config.update(args)
 
         print('#######################')
         print(f'Experiments name: {exp_full_name}')
