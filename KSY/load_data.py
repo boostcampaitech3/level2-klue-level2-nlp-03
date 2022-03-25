@@ -6,6 +6,18 @@ import torch
 # additional
 from collections import defaultdict
 from sklearn.model_selection import train_test_split
+import numpy as np
+label_list = ['no_relation', 'org:top_members/employees', 'org:members',
+                  'org:product', 'per:title', 'org:alternate_names',
+                  'per:employee_of', 'org:place_of_headquarters', 'per:product',
+                  'org:number_of_employees/members', 'per:children',
+                  'per:place_of_residence', 'per:alternate_names',
+                  'per:other_family', 'per:colleagues', 'per:origin', 'per:siblings',
+                  'per:spouse', 'org:founded', 'org:political/religious_affiliation',
+                  'org:member_of', 'per:parents', 'org:dissolved',
+                  'per:schools_attended', 'per:date_of_death', 'per:date_of_birth',
+                  'per:place_of_birth', 'per:place_of_death', 'org:founded_by',
+                  'per:religion']
 
 class RE_Dataset(torch.utils.data.Dataset):
   """ Dataset 구성을 위한 class."""
@@ -209,13 +221,23 @@ def tokenized_dataset(dataset, tokenizer):
       )
   return tokenized_sentences
 
+def get_cls_list(pd_dataset):
+    labels = label_to_num(pd_dataset['label'])
+    _, distr = np.unique(labels, return_counts=True)
+    return distr
+
+
 if __name__ == '__main__':
     from transformers import AutoTokenizer
     data_dir = "../baseline/dataset/train/train.csv"
     MODEL_NAME = "klue/bert-base"
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
-    train_dataset, val_dataset, train_label_list, val_label_list = load_split_eunki_data(data_dir)
+    train_dataset, val_dataset = load_split_data(data_dir)
+    labels = label_to_num(train_dataset['label'])
+    # eunki
+    # train_dataset, val_dataset, train_label_list, val_label_list = load_split_data(data_dir)
+
     # tokenizing dataset
     tokenized_train = tokenized_dataset(train_dataset, tokenizer)
     tokenized_eval = tokenized_dataset(val_dataset, tokenizer)
