@@ -46,6 +46,9 @@ def get_args():
     parser.add_argument("--loss_fn", type=str, default='base', help="name of loss")
     parser.add_argument("--optimizer", type=str, default='adamw_hf', help="name of optimizer")
 
+    parser.add_argument("--gamma", type=float, default=1., help="name of loss")
+
+
     # training basic hyperparms
     parser.add_argument("--epochs", type=int, default=20, help="total number of training epochs")
     parser.add_argument("--train_bs", type=int, default=16, help="batch size per device during training")
