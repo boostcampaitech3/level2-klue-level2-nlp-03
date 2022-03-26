@@ -134,6 +134,17 @@ def train(args,exp_full_name,reports='wandb'):
                                args.seed,
                                args.eval_ratio)
 
+    elif args.split_mode =='split-ent':
+        # test 중
+        # split-basic + entity +
+        train_dataset, eval_dataset, train_label, eval_label = load_split_ent_data(args.train_data_dir,
+                               args.seed,
+                               args.eval_ratio)
+        sub_obj = ["[E1]", "[/E1]", "[E2]", "[/E2]"]
+        tokenizer.add_special_tokens({
+            "additional_special_tokens": sub_obj
+        })
+
     # tokenizing dataset
     tokenized_train = tokenized_dataset(train_dataset, tokenizer)
     tokenized_eval = tokenized_dataset(eval_dataset, tokenizer)
@@ -156,6 +167,9 @@ def train(args,exp_full_name,reports='wandb'):
     model.parameters
     model.to(device)
 
+    if args.split_mode == 'split-ent':
+        model.resize_token_embeddings(len(tokenizer))
+        print('### resized done ###')
     # 사용한 option 외에도 다양한 option들이 있습니다.
     # https://huggingface.co/transformers/main_classes/trainer.html#trainingarguments 참고해주세요.
     training_args = TrainingArguments(
