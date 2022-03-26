@@ -196,6 +196,61 @@ def load_split_data(dataset_dir, seed=42, eval_ratio=0.2):
 
     return train_dataset, eval_dataset
 
+
+def preprocessing_ent_dataset(dataset):
+    """
+    TEST 중. special token add 후 masking이 안됨
+    처음 불러온 csv 파일에서 sentecen에 등장하고 start_idx, end_idx 를 갖는 subject, object를 marking."""
+
+    subject_entity = []
+    object_entity = []
+    subject_type = []
+    object_type = []
+    # subject_entity : {'word':- , 'start_idx':-, 'end_idx':-}
+    for idx, (subj, obj, sents) in enumerate(
+            zip(dataset['subject_entity'], dataset['object_entity'], dataset['sentence'])):
+        subj, obj = eval(subj), eval(obj)
+        new_subj = '[E1]' + sents[subj['start_idx']: subj['end_idx'] + 1] + '[/E1]'
+        new_obj = '[E2]' + sents[obj['start_idx']: obj['end_idx'] + 1] + '[/E2]'
+        if subj['start_idx'] >= obj['start_idx']:
+            temp = sents[:obj['start_idx']] + new_obj + sents[obj['end_idx'] + 1: subj['start_idx']] + new_subj + sents[
+                                                                                                                  subj[
+                                                                                                                      'end_idx'] + 1:]
+        elif subj['start_idx'] < obj['start_idx']:
+            temp = sents[:subj['start_idx']] + new_subj + sents[
+                                                          subj['end_idx'] + 1: obj['start_idx']] + new_obj + sents[obj[
+                                                                                                                       'end_idx'] + 1:]
+
+        dataset['sentence'][idx] = temp
+
+        subject_entity.append(subj['word'])
+        object_entity.append(obj['word'])
+
+        subject_type.append(subj['type'])
+        object_type.append(obj['type'])
+
+    # print(len(dataset['id'], len(dataset['sentence']))
+    out_dataset = pd.DataFrame({'id': dataset['id'], 'sentence': dataset['sentence'],
+                                'subject_entity': subject_entity, 'object_entity': object_entity,
+                                'subject_type': subject_type, 'object_type': object_type,
+                                'label': dataset['label'], })
+    return out_dataset
+
+def load_split_ent_data(dataset_dir, seed=42, eval_ratio=0.2):
+    """ TEST 중
+    """
+    print('### Split basic')
+    pd_dataset = pd.read_csv(dataset_dir)
+    label = pd_dataset['label']
+    pd_train, pd_eval = train_test_split(pd_dataset, test_size=eval_ratio, shuffle=True,
+                                           stratify=label,
+                                           random_state=seed)
+
+    train_dataset = preprocessing_ent_dataset(pd_train)
+    eval_dataset = preprocessing_ent_dataset(pd_eval)
+
+    return train_dataset, eval_dataset
+
 def load_data(dataset_dir):
   """ csv 파일을 경로에 맡게 불러 옵니다. """
   pd_dataset = pd.read_csv(dataset_dir)
