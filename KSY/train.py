@@ -134,6 +134,17 @@ def train(args,exp_full_name,reports='wandb'):
                                args.seed,
                                args.eval_ratio)
 
+    elif args.split_mode =='split-ent':
+        # test 중
+        # split-basic + entity +
+        train_dataset, eval_dataset, train_label, eval_label = load_split_ent_data(args.train_data_dir,
+                               args.seed,
+                               args.eval_ratio)
+        sub_obj = ["[E1]", "[/E1]", "[E2]", "[/E2]"]
+        tokenizer.add_special_tokens({
+            "additional_special_tokens": sub_obj
+        })
+
     # tokenizing dataset
     tokenized_train = tokenized_dataset(train_dataset, tokenizer)
     tokenized_eval = tokenized_dataset(eval_dataset, tokenizer)
@@ -156,6 +167,9 @@ def train(args,exp_full_name,reports='wandb'):
     model.parameters
     model.to(device)
 
+    if args.split_mode == 'split-ent':
+        model.resize_token_embeddings(len(tokenizer))
+        print('### resized done ###')
     # 사용한 option 외에도 다양한 option들이 있습니다.
     # https://huggingface.co/transformers/main_classes/trainer.html#trainingarguments 참고해주세요.
     training_args = TrainingArguments(
@@ -214,7 +228,7 @@ def main():
     # 디버깅 때는 wandb 로깅 안하기 위해서
     if args.use_wandb:
         # TODO; 실험 이름 convention은 천천히 정해볼까요?
-        exp_full_name = f'{args.user_name}_{args.model_name}_{args.split_mode}_{args.lr}_{args.optimizer}_{args.loss_fn}'
+        exp_full_name = f'{args.user_name}_{args.model_name}_{args.split_mode}({args.eval_ratio})_{args.lr}_{args.optimizer}_{args.loss_fn}'
         wandb.login()
 
         # project : 우리 그룹의 프로젝트 이름

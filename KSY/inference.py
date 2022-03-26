@@ -63,7 +63,7 @@ def main(args):
   """
     주어진 dataset csv 파일과 같은 형태일 경우 inference 가능한 코드입니다.
   """
-  device = 'cpu' #torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+  device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
   # load tokenizer
   # "monologg/koelectra-base-v3-discriminator"
   Tokenizer_NAME = "klue/roberta-large" #"klue/bert-base"
@@ -90,14 +90,14 @@ def main(args):
   # 아래 directory와 columns의 형태는 지켜주시기 바랍니다.
   output = pd.DataFrame({'id':test_id,'pred_label':pred_answer,'probs':output_prob,})
 
-  output.to_csv('./ro_prediction/submission_basic_ldam_1000.csv', index=False) # 최종적으로 완성된 예측한 라벨 csv 파일 형태로 저장.
+  output.to_csv('./ro_prediction/submission_basic_0.05_2800.csv', index=False) # 최종적으로 완성된 예측한 라벨 csv 파일 형태로 저장.
   #### 필수!! ##############################################
   print('---- Finish! ----')
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   
   # model dir
-  parser.add_argument('--model_dir', type=str, default="/opt/ml/level2-klue-level2-nlp-03/KSY/ro_results_basic_ldam/checkpoint-1000")
+  parser.add_argument('--model_dir', type=str, default="/opt/ml/level2-klue-level2-nlp-03/KSY/ro_results_basic_eval0.05/checkpoint-2800")
   args = parser.parse_args()
   print(args)
   main(args)
