@@ -26,7 +26,7 @@ from utils import plot_cm_by_num_samples, plot_cm_by_ratio
 from custom.callback import customWandbCallback
     #customTrainerState,customTrainerControl,customTrainerCallback
 from custom.trainer import customTrainer
-
+from models.custom_roberta import customRobertaForSequenceClassification
 label_list = ['no_relation', 'org:top_members/employees', 'org:members',
                   'org:product', 'per:title', 'org:alternate_names',
                   'per:employee_of', 'org:place_of_headquarters', 'per:product',
@@ -168,8 +168,8 @@ def train(args,exp_full_name,reports='wandb'):
     # setting model hyperparameter
     model_config = AutoConfig.from_pretrained(MODEL_NAME)
     model_config.num_labels = args.num_labels
-
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
+    model = customRobertaForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
+    # model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
     print(model.config)
     model.parameters
     model.to(device)

@@ -84,6 +84,12 @@ class customTrainer2(Trainer):
 
         elif add_args.loss_fn =='focalloss':
             self.label_smoother = get_loss(add_args, cls_list)
+        elif add_args.loss_fn =='labelsmoothingloss':
+            self.label_smoother = get_loss(add_args, cls_list)
+        elif add_args.loss_fn =='base':
+            pass
+        else:
+            raise NotImplementedError
 
     def _maybe_log_save_evaluate(self, tr_loss, model, trial, epoch, ignore_keys_for_eval):
 
