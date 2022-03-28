@@ -22,7 +22,7 @@ def get_args():
     # added by sykim; 디버깅할 때 켜두면 실험 너무 쌓여서 디버깅 때는 false하고 돌릴 때 True로 해뒀어요 저는.
     parser.add_argument("--use_wandb", type=str2bool, default=True, help="if you're ready to log in wandb")
     parser.add_argument("--user_name", type=str, default='Eunki', help="your initial name")
-    parser.add_argument('--exp_name', type=str, required=False, default="first_test",
+    parser.add_argument('--exp_name', type=str, required=False, default="kfold_prec",
                         help="wandb experiments name if needed")
 
     parser.add_argument("--logging_dir", type=str, default='./logs', help="log dir")
@@ -47,14 +47,14 @@ def get_args():
 
     # training basic hyperparms
     parser.add_argument("--epochs", type=int, default=3, help="total number of training epochs")
-    parser.add_argument("--train_bs", type=int, default=64, help="batch size per device during training")
+    parser.add_argument("--train_bs", type=int, default=32, help="batch size per device during training")
     parser.add_argument("--lr", type=float, default=5e-5, help="learning rate (default:5e-5)")
     parser.add_argument("--warmup_steps", type=int, default=500, help="number of warmup steps for learning rate scheduler")
     parser.add_argument("--lr_decay", type=float, default=1e-1, help="learning rate decaying when used")
     parser.add_argument("--weight_decay", type=float, default=0.01, help="strength of weight decay")
 
     # evaluation
-    parser.add_argument("--eval_bs", type=int, default=64, help="batch size per device for evaluation")
+    parser.add_argument("--eval_bs", type=int, default=32, help="batch size per device for evaluation")
     parser.add_argument("--eval_strategy", type=str, default='steps',
                         help="evaluation strategy to adopt during training"
                              "`no`:  No evaluation during training."
@@ -67,6 +67,7 @@ def get_args():
     parser.add_argument("--save_steps", type=int, default=500, help="log saving step.")
     # added by sykim;
     parser.add_argument("--model_save_dir", type=str, default='./best_model', help="model ckpt")
+    parser.add_argument("--augmentaion", type=str, default='NO_AUG', help="model ckpt")
 
     args = parser.parse_args()
     return args
