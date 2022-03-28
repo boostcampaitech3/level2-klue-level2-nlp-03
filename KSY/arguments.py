@@ -47,6 +47,7 @@ def get_args():
     parser.add_argument("--optimizer", type=str, default='adamw_hf', help="name of optimizer")
 
     parser.add_argument("--gamma", type=float, default=1., help="name of loss")
+    parser.add_argument("--smoothing", type=float, default=0.1, help="smoothing factor for label smoothing loss")
 
 
     # training basic hyperparms
