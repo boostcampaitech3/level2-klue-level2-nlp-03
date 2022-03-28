@@ -8,6 +8,8 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_sc
 from sklearn.model_selection import StratifiedKFold
 from transformers import AutoTokenizer, AutoConfig, EarlyStoppingCallback, AutoModelForSequenceClassification, Trainer, TrainingArguments, RobertaConfig, RobertaTokenizer, RobertaForSequenceClassification, BertTokenizer
 from load_data import *
+import warnings
+warnings.filterwarnings('ignore')
 
 from transformers import (
     AutoTokenizer,
@@ -106,7 +108,7 @@ class Lite(LightningLite):
       tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
       # load dataset
-      total_train_dataset = load_data(args.train_data_dir)
+      total_train_dataset = load_data(args.train_data_dir, args.augmentaion)
       # 먼저 중복여부 판별을 위한 코드
       total_train_dataset['is_duplicated'] = total_train_dataset['sentence'].duplicated(keep=False)
       # dev_dataset = load_data("../dataset/train/dev.csv") # validation용 데이터는 따로 만드셔야 합니다.
@@ -136,8 +138,8 @@ class Lite(LightningLite):
         for val_idx in val_dataset.index:
             if val_dataset['is_duplicated'].iloc[val_idx] == True:
                 if val_dataset['sentence'].iloc[val_idx] in train_dataset['sentence'].values:
-                    train_dataset.concat(val_dataset.iloc[val_idx])
-                    train_label.concat(val_label.iloc[val_idx])
+                    train_dataset.append(val_dataset.iloc[val_idx])
+                    train_label.append(val_label.iloc[val_idx])
                     temp.append(val_idx)
                 
         val_dataset.drop(temp, inplace= True, axis= 0)
@@ -159,7 +161,7 @@ class Lite(LightningLite):
 
         device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
 
-        print(device)
+
         # setting model hyperparameter
         model_config = AutoConfig.from_pretrained(MODEL_NAME)
         model_config.num_labels = args.num_labels
@@ -211,8 +213,8 @@ class Lite(LightningLite):
         #model.save_pretrained(args.model_save_dir)
         if not os.path.exists(f'{args.model_save_dir}_{fold}'):
             os.makedirs(f'{args.model_save_dir}_{fold}')
-        torch.save(model.state_dict(), os.path.join(f'{args.model_save_dir}_{fold}', 'pytorch_model.bin'))
-        print(f'fold{fold} fin!')
+        torch.save(model.state_dict(), os.path.join(f'./{MODEL_NAME}/{args.model_save_dir}_{fold}', 'pytorch_model.bin'))
+        print(f'{MODEL_NAME} version, fold{fold} fin!')
         
         
         #run.finish()
