@@ -96,14 +96,15 @@ def main(args):
   fold_num = args.fold_num
   if not os.path.exists("./prediction"):
     os.makedirs("./prediction")
-  output.to_csv(f'./prediction/submission_{fold_num}.csv', index=False) # 최종적으로 완성된 예측한 라벨 csv 파일 형태로 저장.
+  output.to_csv(f'./prediction/{args.model_name}/submission_{fold_num}.csv', index=False) # 최종적으로 완성된 예측한 라벨 csv 파일 형태로 저장.
   #### 필수!! ##############################################
   print('---- Finish! ----')
 if __name__ == '__main__':    
   # model dir
   for i in range (5):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_dir', type=str, default=f"./best_model_{i}/pytorch_model.bin")
+    parser.add_argument("--model_name", type=int, default="roberta-large")
+    parser.add_argument('--model_dir', type=str, default=f"./{args.model_name}/best_model_{i}/pytorch_model.bin")
     parser.add_argument('--fold_num', type=str, default=i)
     args = parser.parse_args()
     print(args)
