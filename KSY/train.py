@@ -6,8 +6,12 @@ import torch
 import sklearn
 import numpy as np
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
-from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification, Trainer, TrainingArguments, \
-    RobertaConfig, RobertaTokenizer, RobertaForSequenceClassification, BertTokenizer
+from transformers import \
+    AutoTokenizer, AutoConfig, AutoModelForSequenceClassification, \
+    Trainer, TrainingArguments, \
+    RobertaConfig, RobertaTokenizer, \
+    RobertaForSequenceClassification, BertTokenizer, \
+    EarlyStoppingCallback
 from load_data import *
 
 # get arguments
@@ -137,9 +141,12 @@ def train(args,exp_full_name,reports='wandb'):
     elif args.split_mode =='split-ent':
         # test 중
         # split-basic + entity +
-        train_dataset, eval_dataset, train_label, eval_label = load_split_ent_data(args.train_data_dir,
+
+        train_dataset, eval_dataset= load_split_ent_data(args.train_data_dir,
                                args.seed,
                                args.eval_ratio)
+        train_label = label_to_num(train_dataset['label'].values)
+        eval_label = label_to_num(eval_dataset['label'].values)
         sub_obj = ["[E1]", "[/E1]", "[E2]", "[/E2]"]
         tokenizer.add_special_tokens({
             "additional_special_tokens": sub_obj
@@ -202,7 +209,7 @@ def train(args,exp_full_name,reports='wandb'):
         train_dataset=RE_train_dataset,  # training dataset
         eval_dataset=RE_eval_dataset,  # evaluation dataset
         compute_metrics=compute_metrics , # define metrics function
-        callbacks = [customWandbCallback()]
+        callbacks = [customWandbCallback(), EarlyStoppingCallback(early_stopping_patience= 5)]
     )
 
     # train model
@@ -228,7 +235,7 @@ def main():
     # 디버깅 때는 wandb 로깅 안하기 위해서
     if args.use_wandb:
         # TODO; 실험 이름 convention은 천천히 정해볼까요?
-        exp_full_name = f'{args.user_name}_{args.model_name}_{args.split_mode}({args.eval_ratio})_{args.lr}_{args.optimizer}_{args.loss_fn}'
+        exp_full_name = f'{args.user_name}_{args.model_name}_{args.split_mode}({args.eval_ratio})_{args.lr}(early)_{args.optimizer}_{args.loss_fn}'
         wandb.login()
 
         # project : 우리 그룹의 프로젝트 이름
