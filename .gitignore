@@ -2,6 +2,7 @@
 
 #do not ignore
 !.gitignore
+*.json
 
 wandb/
 __pycache__/
