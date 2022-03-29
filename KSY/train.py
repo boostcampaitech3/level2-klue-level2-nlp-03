@@ -168,13 +168,22 @@ def train(args,exp_full_name,reports='wandb'):
     # setting model hyperparameter
     model_config = AutoConfig.from_pretrained(MODEL_NAME)
     model_config.num_labels = args.num_labels
-    model = customRobertaForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
-    # model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
+    model_config.update({"head_type": args.head_type})
+    if args.head_type =='base':
+        # 아예 hugging face 지원 구조
+        model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
+    elif args.head_type =='more_dense':
+        model = customRobertaForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
+    elif args.head_type =='lstm':
+        # 현재 lstm은 모든 sequence embedding 돌리고 마지막 hidden state(context vector 만)
+        model = customRobertaForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
+
     print(model.config)
     model.parameters
     model.to(device)
 
     if args.split_mode == 'split-ent':
+        print('### for entity typing. but bad acc -> need to fix')
         model.resize_token_embeddings(len(tokenizer))
         print('### resized done ###')
     # 사용한 option 외에도 다양한 option들이 있습니다.
