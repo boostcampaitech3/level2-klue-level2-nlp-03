@@ -6,11 +6,26 @@
 - [ ] multi-sentence, single sentence
 - [ ] more elaborately entity-marking(e.g, punctuation, entity typing)
 - [ ] model-tail design(e.g, stacking additional layers) - CODE SEARCH
-- [ ] entity grouping & each model for corresponding grouping - PAPER SEARCH
+- [ ] entity grouping & each model for corresponding grouping or hierarchical - PAPER SEARCH
 - [ ] ner + gives penalty when entity pairs are never to happen - mentor suggested
 
+
+### 03/ 29(morning)
+* fix: roberta model running on both cases -> please refer `models/custom_roberta.py`
+    * more dense: stacking with two fc layers. increasing hidden dim and decreasing hidden dim.
+    * lstm : several options exists. 
+      * For now, every token embedding feeds into lstm and use final hidden states(context vector)
+
+### 03/ 28
+* feat: label smoothing training
+    * add `smoothing` factor in `arguments.py`
+* feat: customizing roberta model, using pretrained class
+    * please refer to `models/custom_roberta.py`
+    - [x] lstm running policy
+
+
 ### 03/ 26(afternoon) + examples should be removed
-* feat: entity markers in sentences
+* feat: entity markers in sentences -> refer to `load_data.py` & notebooks(uploaded privately)
   - [ ] issue : added special tokens don't get maksed.
   
 ```
