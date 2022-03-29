@@ -473,12 +473,13 @@ class RobertaClassificationHead(nn.Module):
 
     def __init__(self, config):
         super().__init__()
-        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
+        # config.hidden_size -> 2*config.hidden_size로 해봄
+        self.dense = nn.Linear(config.hidden_size, 2*config.hidden_size)
         classifier_dropout = (
             config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
         )
         self.dropout = nn.Dropout(classifier_dropout)
-        self.out_proj = nn.Linear(config.hidden_size, config.num_labels)
+        self.out_proj = nn.Linear(2*config.hidden_size, config.num_labels)
 
     def forward(self, features, avg = False, **kwargs):
         # avg or use cls token
