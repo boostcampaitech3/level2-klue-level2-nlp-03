@@ -53,7 +53,7 @@ def load_test_dataset(dataset_dir, tokenizer):
     test dataset을 불러온 후,
     tokenizing 합니다.
   """
-  test_dataset = load_data(dataset_dir)
+  test_dataset = load_data(dataset_dir, "NO_AUG")
   test_label = list(map(int,test_dataset['label'].values))
   # tokenizing dataset
   tokenized_test = tokenized_dataset(test_dataset, tokenizer)
@@ -94,8 +94,8 @@ def main(args):
   # 아래 directory와 columns의 형태는 지켜주시기 바랍니다.
   output = pd.DataFrame({'id':test_id,'pred_label':pred_answer,'probs':output_prob,})
   fold_num = args.fold_num
-  if not os.path.exists("./prediction"):
-    os.makedirs("./prediction")
+  if not os.path.exists(f'./prediction/{args.model_name}'):
+    os.makedirs(f'./prediction/{args.model_name}')
   output.to_csv(f'./prediction/{args.model_name}/submission_{fold_num}.csv', index=False) # 최종적으로 완성된 예측한 라벨 csv 파일 형태로 저장.
   #### 필수!! ##############################################
   print('---- Finish! ----')
@@ -103,8 +103,10 @@ if __name__ == '__main__':
   # model dir
   for i in range (5):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_name", type=int, default="roberta-large")
-    parser.add_argument('--model_dir', type=str, default=f"./{args.model_name}/best_model_{i}/pytorch_model.bin")
+    
+    parser.add_argument("--model_name", type=str, default="roberta-large")
+    args = parser.parse_args()
+    parser.add_argument('--model_dir', type=str, default=f"./best_model_{i}/{args.model_name}/pytorch_model.bin")
     parser.add_argument('--fold_num', type=str, default=i)
     args = parser.parse_args()
     print(args)
