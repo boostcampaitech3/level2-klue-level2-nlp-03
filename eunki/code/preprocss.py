@@ -31,7 +31,3 @@ def remove_duplicate(df):
 
 
     return df
-
-
-
-preprocess("../dataset/train/train.csv")
