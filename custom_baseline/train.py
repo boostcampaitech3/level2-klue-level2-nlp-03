@@ -8,6 +8,7 @@ import numpy as np
 
 #  library
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
+from sklearn.model_selection import StratifiedKFold
 from transformers import (
     AutoTokenizer,
     AutoConfig,
@@ -28,6 +29,7 @@ import random
 #  Custom - python file
 from arguments import get_args  # get arguments
 from load_data import *
+from custom_kfold import *
 
 
 def seed_fix(seed):
@@ -129,7 +131,6 @@ class Lite(LightningLite):
         MODEL_NAME = args.model_name
         tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
-        # load dataset
         train_dataset = load_data(args.train_data_dir)
         # dev_dataset = load_data("../dataset/train/dev.csv") # validation용 데이터는 따로 만드셔야 합니다.
 
@@ -142,7 +143,7 @@ class Lite(LightningLite):
 
         # make dataset for pytorch.
         RE_train_dataset = RE_Dataset(tokenized_train, train_label)
-        # RE_dev_dataset = RE_Dataset(tokenized_dev, dev_label)
+        RE_dev_dataset = RE_train_dataset
 
         # setting model hyperparameter
         model_config = AutoConfig.from_pretrained(MODEL_NAME)
@@ -180,7 +181,7 @@ class Lite(LightningLite):
             model=model,  # the instantiated 🤗 Transformers model to be trained
             args=training_args,  # training arguments, defined above
             train_dataset=RE_train_dataset,  # training dataset
-            eval_dataset=RE_train_dataset,  # evaluation dataset
+            eval_dataset=RE_dev_dataset,  # evaluation dataset
             compute_metrics=compute_metrics,  # define metrics function
         )
 
@@ -227,7 +228,13 @@ def main():
         print("YOU ARE NOT LOGGING RESULTS NOW")
         print("@@@@@@@@$$$$$$@@@@@@@@@@")
 
-    Lite(devices=1, accelerator="gpu", precision="bf16").run(args, exp_full_name)
+    if args.train_method.lower() == "kfold":
+        print("Using Custom Kfold from eunki")
+        custom_kfold_train(args, exp_full_name)
+    else:  # original load dataset
+        print("Using Baseline train")
+        Lite(devices=1, accelerator=args.accelerator, precision=args.precision).run(args, exp_full_name)
+
     # only when using notebook
     # wandb.finish()
 

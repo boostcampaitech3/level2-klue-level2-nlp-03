@@ -10,3 +10,9 @@ nohup.out
 
 *.csv
 results/
+best_model/
+best_model_0/
+best_model_1/
+best_model_2/
+best_model_3/
+best_model_4/

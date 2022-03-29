@@ -1,4 +1,4 @@
-from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification, Trainer, TrainingArguments
+from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification, Trainer, TrainingArguments, AutoModel
 from torch.utils.data import DataLoader
 from load_data import *
 import pandas as pd
@@ -65,12 +65,18 @@ def main(args):
   """
   device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
   # load tokenizer
-  Tokenizer_NAME = "klue/bert-base"
+  Tokenizer_NAME = "klue/roberta-large"
   tokenizer = AutoTokenizer.from_pretrained(Tokenizer_NAME)
 
   ## load my model
-  MODEL_NAME = args.model_dir # model dir.
-  model = AutoModelForSequenceClassification.from_pretrained(args.model_dir)
+  
+   # model dir.
+  model_config= AutoConfig.from_pretrained(Tokenizer_NAME)
+  model_config.num_labels= 30
+  model= AutoModelForSequenceClassification.from_pretrained(Tokenizer_NAME, config= model_config)
+  
+  best_state_dict= torch.load(args.model_dir)
+  model.load_state_dict(best_state_dict)
   model.parameters
   model.to(device)
 
@@ -87,16 +93,20 @@ def main(args):
   #########################################################
   # 아래 directory와 columns의 형태는 지켜주시기 바랍니다.
   output = pd.DataFrame({'id':test_id,'pred_label':pred_answer,'probs':output_prob,})
-
-  output.to_csv('./prediction/submission.csv', index=False) # 최종적으로 완성된 예측한 라벨 csv 파일 형태로 저장.
+  fold_num = args.fold_num
+  if not os.path.exists("./prediction"):
+    os.makedirs("./prediction")
+  output.to_csv(f'./prediction/{args.model_name}/submission_{fold_num}.csv', index=False) # 최종적으로 완성된 예측한 라벨 csv 파일 형태로 저장.
   #### 필수!! ##############################################
   print('---- Finish! ----')
-if __name__ == '__main__':
-  parser = argparse.ArgumentParser()
-  
+if __name__ == '__main__':    
   # model dir
-  parser.add_argument('--model_dir', type=str, default="./best_model")
-  args = parser.parse_args()
-  print(args)
-  main(args)
+  for i in range (5):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model_name", type=int, default="roberta-large")
+    parser.add_argument('--model_dir', type=str, default=f"./{args.model_name}/best_model_{i}/pytorch_model.bin")
+    parser.add_argument('--fold_num', type=str, default=i)
+    args = parser.parse_args()
+    print(args)
+    main(args)
   

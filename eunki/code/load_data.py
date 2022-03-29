@@ -2,6 +2,7 @@ import pickle as pickle
 import os
 import pandas as pd
 import torch
+from preprocss import *
 
 
 class RE_Dataset(torch.utils.data.Dataset):
@@ -18,23 +19,69 @@ class RE_Dataset(torch.utils.data.Dataset):
   def __len__(self):
     return len(self.labels)
 
-def preprocessing_dataset(dataset):
+def preprocessing_dataset(dataset, augmentation):
   """ 처음 불러온 csv 파일을 원하는 형태의 DataFrame으로 변경 시켜줍니다."""
-  subject_entity = []
-  object_entity = []
-  for i,j in zip(dataset['subject_entity'], dataset['object_entity']):
-    i = i[1:-1].split(',')[0].split(':')[1]
-    j = j[1:-1].split(',')[0].split(':')[1]
+  
+  if augmentation == "ONLY_AUG":
+    subject_entity = []
+    object_entity = []
+    for i,j in zip(dataset['subject_entity'], dataset['object_entity']):
+      i = i[1:-1].split(',')[0].split(':')[1]
+      j = j[1:-1].split(',')[0].split(':')[1]
 
-    subject_entity.append(i)
-    object_entity.append(j)
-  out_dataset = pd.DataFrame({'id':dataset['id'], 'sentence':dataset['sentence'],'subject_entity':subject_entity,'object_entity':object_entity,'label':dataset['label'],})
-  return out_dataset
+      subject_entity.append(i)
+      object_entity.append(j)
+    out_dataset = pd.DataFrame({'id':dataset['id'], 'sentence':dataset['en_trans_sentence'],'subject_entity':subject_entity,'object_entity':object_entity,'label':dataset['label'],})
+    return out_dataset
+  
+  elif augmentation == "AUG":
+    subject_entity = []
+    object_entity = []
+    for i,j in zip(dataset['subject_entity'], dataset['object_entity']):
+      i = i[1:-1].split(',')[0].split(':')[1]
+      j = j[1:-1].split(',')[0].split(':')[1]
 
-def load_data(dataset_dir):
+      subject_entity.append(i)
+      object_entity.append(j)
+    out_dataset_source = pd.DataFrame({'id':dataset['id'], 'sentence':dataset['sentence'],'subject_entity':subject_entity,'object_entity':object_entity,'label':dataset['label'],})
+    
+    subject_entity = []
+    object_entity = []
+    
+    for i,j in zip(dataset['subject_entity'], dataset['object_entity']):
+      i = i[1:-1].split(',')[0].split(':')[1]
+      j = j[1:-1].split(',')[0].split(':')[1]
+
+      subject_entity.append(i)
+      object_entity.append(j)
+    
+    out_dataset_aug = pd.DataFrame({'id':dataset['id'], 'sentence':dataset['en_trans_sentence'],'subject_entity':subject_entity,'object_entity':object_entity,'label':dataset['label'],})
+
+    out_dataset = pd.concat([out_dataset_source, out_dataset_aug])
+    
+    return out_dataset
+  
+  else:  #default = "NO_AUG"
+    subject_entity = []
+    object_entity = []
+    for i,j in zip(dataset['subject_entity'], dataset['object_entity']):
+      i = i[1:-1].split(',')[0].split(':')[1]
+      j = j[1:-1].split(',')[0].split(':')[1]
+
+      subject_entity.append(i)
+      object_entity.append(j)
+    out_dataset = pd.DataFrame({'id':dataset['id'], 'sentence':dataset['sentence'],'subject_entity':subject_entity,'object_entity':object_entity,'label':dataset['label'],})
+    return out_dataset
+
+
+
+def load_data(dataset_dir, augmentation):
   """ csv 파일을 경로에 맡게 불러 옵니다. """
   pd_dataset = pd.read_csv(dataset_dir)
-  dataset = preprocessing_dataset(pd_dataset)
+  # 중복 데이터 제거를 위한 전처리
+  pd_dataset = preprocess(pd_dataset)
+  # 데이터셋으로 제작
+  dataset = preprocessing_dataset(pd_dataset, augmentation)
   
   return dataset
 

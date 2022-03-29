@@ -33,25 +33,17 @@ def get_args():
     parser.add_argument("--train_data_dir", type=str, default="../baseline/dataset/train/train.csv", help="data directory")
     parser.add_argument("--test_data_dir", type=str, default="../baseline/dataset/test/test.csv", help="data directory")
     parser.add_argument("--eval_ratio", type=float, default=0.2, help="training/eval split ratio")
-    parser.add_argument("--split_mode", type=str, default='dup', help="strategy to split train, test")
 
     # model
     # added by sykim;
     parser.add_argument("--model_name", type=str, default='klue/bert-base', help="name of model")
     parser.add_argument("--num_labels", type=int, default=30, help="num of classes for model")
     parser.add_argument("--tokenizer_name", type=str, default='NA', help="name of tokenizer if necessary")
-    # custom_roberta.py 에서 정의됩니다.
-    parser.add_argument("--head_type", type=str, default='base', help="type for final classification head,",
-                        choices = ['more_dense', 'base', 'lstm'])
 
     # loss & optimizer
     # added by sykim; loss랑 OPtimizer는 라이브러리 안에 숨어있는 것 같아요. 혹시 몰라서 추가해뒀습니다.
     parser.add_argument("--loss_fn", type=str, default='base', help="name of loss")
     parser.add_argument("--optimizer", type=str, default='adamw_hf', help="name of optimizer")
-
-    parser.add_argument("--gamma", type=float, default=1., help="name of loss")
-    parser.add_argument("--smoothing", type=float, default=0.1, help="smoothing factor for label smoothing loss")
-
 
     # training basic hyperparms
     parser.add_argument("--epochs", type=int, default=20, help="total number of training epochs")
