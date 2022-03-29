@@ -67,7 +67,7 @@ def get_args():
     parser.add_argument("--save_steps", type=int, default=500, help="log saving step.")
     # added by sykim;
     parser.add_argument("--model_save_dir", type=str, default='./best_model', help="model ckpt")
-    parser.add_argument("--augmentaion", type=str, default='NO_AUG', help="model ckpt")
+    parser.add_argument("--augmentation", type=str, default='NO_AUG', help="augmentation")
 
     args = parser.parse_args()
     return args
