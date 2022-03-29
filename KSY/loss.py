@@ -94,8 +94,7 @@ class LabelSmoothingLoss(nn.Module):
 
     def forward(self, pred, target):
         # EDIT need
-        breakpoint()
-        pred = pred.log_softmax(dim=self.dim)
+        pred = pred['logits'].log_softmax(dim=self.dim)
         with torch.no_grad():
             true_dist = torch.zeros_like(pred)
             true_dist.fill_(self.smoothing / (self.cls - 1))

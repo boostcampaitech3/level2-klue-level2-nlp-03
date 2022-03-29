@@ -31,6 +31,8 @@ from transformers.modeling_outputs import (
     TokenClassifierOutput,
 )
 
+#####################################
+# TODO 검색하셔서, 해당 부분 중심으로 확인하시면 될 것 같습니다.
 
 # Copied from transformers.models.bert.modeling_bert.BertPooler
 class RobertaPooler(nn.Module):
@@ -42,6 +44,10 @@ class RobertaPooler(nn.Module):
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
         # We "pool" the model by simply taking the hidden state corresponding
         # to the first token.
+        # TODO: RobertaModel에서 Pooler를 사용할 경우, hidden states의 첫번째 토큰 만 사용해서 Linear, activation을 거칩니다.
+        # hidden_states의 shape은 아마 [batch_size, sequence_len, feature_dim]이고
+        # hidden_states[0] 은 [batch_size, feature_dim]이 될 것같은데 확인 필요합니다.
+        # 향후, entity embedding도 classifier에 넣으려면 해당 index를 통해 그 벡터값만 꺼내서 fc layer에 넣고 concat 하는 등이 필요할 것 같습니다.
         first_token_tensor = hidden_states[:, 0]
         pooled_output = self.dense(first_token_tensor)
         pooled_output = self.activation(pooled_output)
@@ -68,6 +74,8 @@ class RobertaEmbeddings(nn.Module):
     # Copied from transformers.models.bert.modeling_bert.BertEmbeddings.__init__
     def __init__(self, config):
         super().__init__()
+        # 1. dimension check :
+        # embedding dimension 은 vocab추가 시 config.vocab_size 변동
         self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=config.pad_token_id)
         self.position_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size)
         self.token_type_embeddings = nn.Embedding(config.type_vocab_size, config.hidden_size)
@@ -91,6 +99,7 @@ class RobertaEmbeddings(nn.Module):
         self.position_embeddings = nn.Embedding(
             config.max_position_embeddings, config.hidden_size, padding_idx=self.padding_idx
         )
+        # 추후 entity embedding 값을 선언하고, forward 부분에서 더해주는 것 필요할듯
 
     def forward(
         self, input_ids=None, token_type_ids=None, position_ids=None, inputs_embeds=None, past_key_values_length=0
@@ -147,6 +156,7 @@ class RobertaEmbeddings(nn.Module):
         )
         return position_ids.unsqueeze(0).expand(input_shape)
 
+# Encoder는 크게 변동할 사항이 없을 것 같습니다.
 class RobertaEncoder(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -244,6 +254,9 @@ class RobertaEncoder(nn.Module):
         )
 
 
+# 참고하는 코드들은 RobertaModel 은 크게 손대지 않았던데
+# 참고 코드 https://github.com/boostcampaitech2/klue-level2-nlp-14/blob/5154eca96ee9b7f17e5544c54d578ae1f10df401/solution/models/modeling_roberta.py#L10
+# 아마 손댈 필요가 있지 않을까 싶습니다.
 class customRobertaModel(RobertaPreTrainedModel):
     """
     The model can behave as an encoder (with only self-attention) as well as a decoder, in which case a layer of
@@ -259,16 +272,20 @@ class customRobertaModel(RobertaPreTrainedModel):
     _keys_to_ignore_on_load_missing = [r"position_ids"]
 
     # Copied from transformers.models.bert.modeling_bert.BertModel.__init__ with Bert->Roberta
+    # TODO : add_pooling_layer boolean 값에 따라 아래의 pooler가 생성/미생성됩니다.
     def __init__(self, config, add_pooling_layer=True):
         super().__init__(config)
         self.config = config
 
         self.embeddings = RobertaEmbeddings(config)
         self.encoder = RobertaEncoder(config)
-        # breakpoint()
+        # TODO : RobertaPooler 선택 부분
+        # add_pooling_layer의 default는 True지만 RobertaPretrainedModel class에서 설정합니다.
         self.pooler = RobertaPooler(config) if add_pooling_layer else None
 
         # Initialize weights and apply final processing
+        # 참고 : 원래 github에서 긁어온 RobertaPreTrainedModel 은 post_init() 메소드가 PreTrainedModel에 있기 때문에 돼야하는데
+        # 없는 method라고 떠서 추가로 가져왔습니다.
         self.post_init()
 
     def post_init(self):
@@ -431,13 +448,17 @@ class customRobertaModel(RobertaPreTrainedModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
+        # TODO: encoder_outputs 은 BaseModelOutputWithPastAndCrossAttentions 클래스로 반환됩니다.
+        # 그래서 어떤 값들이 리턴되고 어떤걸 선택해서 sequence output으로 사용되는지 확인할 필요가 있습니다.
         sequence_output = encoder_outputs[0]
+        # breakpoint()
+        # TODO: self.pooler가 있고 없고에 따른 pooled_output dimension
         # breakpoint()
         pooled_output = self.pooler(sequence_output) if self.pooler is not None else None
 
         if not return_dict:
             return (sequence_output, pooled_output) + encoder_outputs[1:]
-
+        # 마찬가지로 특정 class 형태로 아웃풋이 반환됩니다.
         return BaseModelOutputWithPoolingAndCrossAttentions(
             last_hidden_state=sequence_output,
             pooler_output=pooled_output,
@@ -474,7 +495,7 @@ class RobertaClassificationHead(nn.Module):
 
 class RobertaClassificationLSTMHead(nn.Module):
     """LSTM(bidirectional model"""
-
+    # TODO: LSTM의 hidden dimension configuration @ 소연
     def __init__(self, config):
         super().__init__()
         self.lstm = nn.LSTM(config.hidden_size, config.hidden_size,
@@ -487,12 +508,22 @@ class RobertaClassificationLSTMHead(nn.Module):
         self.dropout = nn.Dropout(classifier_dropout)
         self.fc2 = nn.Linear(config.hidden_size, config.num_labels)
 
-    def forward(self, features, avg = False, **kwargs):
-        if avg:
-            x = torch.mean(features,dim=1)
+    def forward(self, features, all = True, **kwargs):
+        if all:
+            # LSTM에 전체 문장 token embedding 을 넣을 경우임
+            # 일단 현재는 LSTM 사용할 경우 모든 sequence 받는걸로 설정.
+            x = features
         else:
+            # LSTM으로 들어갈 shape 때문에
+            # [CLS] embedding 만 LSTM에 들어간다면 unsqueeze 처리 필요
+            # 단, 이것만 LSTM 처리하는건 FC layer 넣는거랑 별반 다를게 없음.
+            # 따라서 entity embedding을 더 입력으로 받거나 아니면 위에 처럼
+            # 전체 token embedding sequence  넣는 것이 필요
             x = features[:, 0, :]  # take <s> token (equiv. to [CLS])
+            x = x.unsqueeze(dim=1)
         x = self.dropout(x)
+
+        # 향후 TODO: lstm의 output, hidden dim 나오는 방식
         output, hidden  = self.lstm(x)
         x = output[:,-1,:] # last output
         x = torch.tanh(x) # activation
@@ -510,9 +541,15 @@ class customRobertaForSequenceClassification(RobertaPreTrainedModel):
         self.config = config
         # from transformers import RobertaModel
 
+        # 여기서 add_pooling_layer를 추가할지 안할지 선택합니다.
         self.roberta = customRobertaModel(config, add_pooling_layer=False)
 
-        self.classifier = RobertaClassificationHead(config)
+        # TODO : 여기서 classification head를 어떤 모드로 할지 분기합니다.
+
+        if config.head_type == "more_dense":
+            self.classifier = RobertaClassificationHead(config)
+        elif config.head_type =="lstm":
+            self.classifier = RobertaClassificationLSTMHead(config)
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -574,7 +611,10 @@ class customRobertaForSequenceClassification(RobertaPreTrainedModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
+        # TODO: 위에서 정의된 model의 아웃풋으로 나오게 되면, 해당 output을 사용하고
+        # sequence_output으로 classifier에 넘기게 됩니다. 이때 어떤 값이 넘어가고, dimension을 갖는지 확인 필요합니다.
         sequence_output = outputs[0]
+        # breakpoint()
         logits = self.classifier(sequence_output)
 
         loss = None
@@ -604,6 +644,12 @@ class customRobertaForSequenceClassification(RobertaPreTrainedModel):
             output = (logits,) + outputs[2:]
             return ((loss,) + output) if loss is not None else output
 
+        # 최종 output이 다음과 같은 class로 나가기 때문에,
+        # custom loss 사용시 원하는 key, value값 선택해서 적용하면 됩니다.
+        # 단, loss가 적용되는 시점을 이 forward 부분말고 Trainer의 compute_loss에서 수행했습니다.
+        # 아마 여기서 loss 계산하더라도 compute_loss에서 optimizer.step()가 수행되기 때문에
+        # 결국 어떤 loss로 optimize되는지는 거기서 결정되는 것 같습니다.
+        # 어떤 차이가 있는지 확인은 필요할듯 @ 소연
         return SequenceClassifierOutput(
             loss=loss,
             logits=logits,
