@@ -9,6 +9,10 @@ import pickle as pickle
 import numpy as np
 import argparse
 from tqdm import tqdm
+from arguments import get_args
+
+from custom.trainer import customTrainer
+from models.custom_roberta import customRobertaForSequenceClassification
 
 def inference(model, tokenized_sent, device):
   """
@@ -72,7 +76,19 @@ def main(args):
   # breakpoint()
   ## load my model
   MODEL_NAME = args.model_dir # model dir.
-  model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
+
+  # model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
+  # model_config.num_labels = 30 # args.num_labels
+  # model_config.update({"head_type": args.head_type})
+  if args.head_type == 'base':
+    # 아예 hugging face 지원 구조
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
+  elif args.head_type == 'more_dense':
+    model = customRobertaForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
+  elif args.head_type == 'lstm':
+    # 현재 lstm은 모든 sequence embedding 돌리고 마지막 hidden state(context vector 만)
+    model = customRobertaForSequenceClassification.from_pretrained(MODEL_NAME)
+
   model.parameters
   model.to(device)
 
@@ -90,14 +106,16 @@ def main(args):
   # 아래 directory와 columns의 형태는 지켜주시기 바랍니다.
   output = pd.DataFrame({'id':test_id,'pred_label':pred_answer,'probs':output_prob,})
 
-  output.to_csv('./ro_prediction/submission_dup_0.05_1600.csv', index=False) # 최종적으로 완성된 예측한 라벨 csv 파일 형태로 저장.
+  output.to_csv('./ro_prediction/submission_basic_more_1500.csv', index=False) # 최종적으로 완성된 예측한 라벨 csv 파일 형태로 저장.
   #### 필수!! ##############################################
   print('---- Finish! ----')
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   
   # model dir
-  parser.add_argument('--model_dir', type=str, default="/opt/ml/level2-klue-level2-nlp-03/KSY/ro_results_dup_early/checkpoint-1600")
+  parser.add_argument('--model_dir', type=str, default="/opt/ml/level2-klue-level2-nlp-03/KSY/ro_results_basic_more/checkpoint-1500")
+  parser.add_argument('--head_type', type=str,
+                      default="lstm")
   args = parser.parse_args()
   print(args)
   main(args)
