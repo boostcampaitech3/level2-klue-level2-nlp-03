@@ -65,7 +65,7 @@ def get_args():
     parser.add_argument("--load_best_model_at_end", type=str2bool, default=True, help="load_best_model_at_end")
     parser.add_argument("--save_total_limit", type=int, default=5, help="number of total save model.")
     parser.add_argument("--save_steps", type=int, default=500, help="log saving step.")
-    # added by sykim;
+    
     parser.add_argument("--model_save_dir", type=str, default='./best_model', help="model ckpt")
     parser.add_argument("--augmentation", type=str, default='NO_AUG', help="augmentation")
 
