@@ -43,7 +43,7 @@ if __name__ == '__main__':
   # model dir
   for i in range (5):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_name", type=int, default=i)
+    parser.add_argument("--model_name", type=str, default="roberta_large")
     parser.add_argument('--fold_num', type=str, default=i)
     args = parser.parse_args()
     print(args)
