@@ -42,7 +42,7 @@ def get_args():
     parser.add_argument("--tokenizer_name", type=str, default='NA', help="name of tokenizer if necessary")
     # custom_roberta.py 에서 정의됩니다.
     parser.add_argument("--head_type", type=str, default='base', help="type for final classification head,",
-                        choices = ['more_dense', 'base', 'lstm'])
+                        choices = ['more_dense', 'base', 'lstm','modifiedBiLSTM'])
 
     # loss & optimizer
     # added by sykim; loss랑 OPtimizer는 라이브러리 안에 숨어있는 것 같아요. 혹시 몰라서 추가해뒀습니다.
