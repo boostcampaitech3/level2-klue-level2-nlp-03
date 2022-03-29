@@ -108,7 +108,8 @@ class Lite(LightningLite):
       tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
       # load dataset
-      total_train_dataset = load_data(args.train_data_dir, args.augmentaion)
+      # augmentation 인자를 전달
+      total_train_dataset = load_data(args.train_data_dir, args.augmentation)
       # 먼저 중복여부 판별을 위한 코드
       total_train_dataset['is_duplicated'] = total_train_dataset['sentence'].duplicated(keep=False)
       # dev_dataset = load_data("../dataset/train/dev.csv") # validation용 데이터는 따로 만드셔야 합니다.
@@ -123,10 +124,10 @@ class Lite(LightningLite):
 
         #run= wandb.init(project= 'klue', entity= 'boostcamp-nlp3', name= f'KFOLD_{fold}_{args.wandb_path}')
         
-        train_dataset= total_train_dataset.loc[train_idx]
-        val_dataset= total_train_dataset.loc[val_idx]
-        train_label = total_train_label.loc[train_idx]
-        val_label = total_train_label.loc[val_idx]
+        train_dataset= total_train_dataset.iloc[train_idx]
+        val_dataset= total_train_dataset.iloc[val_idx]
+        train_label = total_train_label.iloc[train_idx]
+        val_label = total_train_label.iloc[val_idx]
 
         train_dataset.reset_index(drop= True, inplace= True)
         val_dataset.reset_index(drop= True, inplace= True)
@@ -211,9 +212,10 @@ class Lite(LightningLite):
         # train model
         trainer.train()
         #model.save_pretrained(args.model_save_dir)
-        if not os.path.exists(f'{args.model_save_dir}_{fold}'):
-            os.makedirs(f'{args.model_save_dir}_{fold}')
-        torch.save(model.state_dict(), os.path.join(f'./{MODEL_NAME}/{args.model_save_dir}_{fold}', 'pytorch_model.bin'))
+        folder_name = MODEL_NAME.split('/')[-1]
+        if not os.path.exists(f'{args.model_save_dir}_{fold}/{folder_name}'):
+            os.makedirs(f'{args.model_save_dir}_{fold}/{folder_name}', exist_ok= True)
+        torch.save(model.state_dict(), os.path.join(f'{args.model_save_dir}_{fold}/{folder_name}', 'pytorch_model.bin'))
         print(f'{MODEL_NAME} version, fold{fold} fin!')
         
         
