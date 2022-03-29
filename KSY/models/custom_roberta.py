@@ -533,6 +533,48 @@ class RobertaClassificationLSTMHead(nn.Module):
         x = self.fc2(x)
         return x
 
+class RobertaClassificationBidirectionalLSTMHead(nn.Module):
+    """Modified LSTM by seyeonpark
+    LSTM의 Bidrectional output 고려한 mixing
+    """
+
+    # TODO: LSTM의 hidden dimension configuration @ 소연
+    def __init__(self, config):
+        super().__init__()
+        self.lstm = nn.LSTM(config.hidden_size, config.hidden_size, batch_first=True, bidirectional=True)
+
+        self.fc1 = nn.Linear(2 * config.hidden_size, config.hidden_size)
+        classifier_dropout = config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
+        self.dropout = nn.Dropout(classifier_dropout)
+        self.fc2 = nn.Linear(config.hidden_size, config.num_labels)
+
+    def forward(self, features, all=True, **kwargs):
+        if all:
+            # LSTM에 전체 문장 token embedding 을 넣을 경우임
+            # 일단 현재는 LSTM 사용할 경우 모든 sequence 받는걸로 설정.
+            x = features
+        else:
+            # LSTM으로 들어갈 shape 때문에
+            # [CLS] embedding 만 LSTM에 들어간다면 unsqueeze 처리 필요
+            # 단, 이것만 LSTM 처리하는건 FC layer 넣는거랑 별반 다를게 없음.
+            # 따라서 entity embedding을 더 입력으로 받거나 아니면 위에 처럼
+            # 전체 token embedding sequence  넣는 것이 필요
+            x = features[:, 0, :]  # take <s> token (equiv. to [CLS])
+            x = x.unsqueeze(dim=1)
+        x = self.dropout(x)
+
+        output, _ = self.lstm(x)
+        _, _, hidden_size = output.size()
+        hidden_size = hidden_size // 2
+        forward = output[:, -1, :hidden_size]  # forward LSTM's output
+        backward = output[:, 0, hidden_size:]  # backward LSTM's output
+        x = torch.cat([forward, backward], dim=-1)
+        x = torch.tanh(x)  # activation
+        x = self.fc1(x)
+        x = self.dropout(x)
+        x = self.fc2(x)
+        return x
+
 class customRobertaForSequenceClassification(RobertaPreTrainedModel):
     _keys_to_ignore_on_load_missing = [r"position_ids"]
 
@@ -551,6 +593,8 @@ class customRobertaForSequenceClassification(RobertaPreTrainedModel):
             self.classifier = RobertaClassificationHead(config)
         elif config.head_type =="lstm":
             self.classifier = RobertaClassificationLSTMHead(config)
+        elif config.head_type =="modifiedBiLSTM":
+            self.classifier = RobertaClassificationBidirectionalLSTMHead(config)
 
         # Initialize weights and apply final processing
         self.post_init()
