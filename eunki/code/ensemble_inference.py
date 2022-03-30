@@ -44,8 +44,7 @@ def main(args):
 if __name__ == '__main__':    
   # model dir
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_name", type=str, default="koelectra-base-v3-discriminator")
-    parser.add_argument('--fold_num', type=str, default=i)
+    parser.add_argument("--model_name", type=str, default="roberta-large")
     args = parser.parse_args()
     print(args)
     main(args)
