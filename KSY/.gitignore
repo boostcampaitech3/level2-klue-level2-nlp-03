@@ -1,6 +1,0 @@
-__pycache__
-*.pkl
-wandb
-best_model
-results
-prediction
