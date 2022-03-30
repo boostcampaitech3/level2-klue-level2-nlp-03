@@ -40,10 +40,16 @@ def get_args():
     parser.add_argument("--num_labels", type=int, default=30, help="num of classes for model")
     parser.add_argument("--tokenizer_name", type=str, default='NA', help="name of tokenizer if necessary")
 
+    parser.add_argument("--head_type", type=str, default='base', help="type for final classification head,",
+                        choices = ['more_dense', 'base', 'lstm','modifiedBiLSTM'])
+
     # loss & optimizer
     # added by sykim; loss랑 OPtimizer는 라이브러리 안에 숨어있는 것 같아요. 혹시 몰라서 추가해뒀습니다.
     parser.add_argument("--loss_fn", type=str, default='base', help="name of loss")
     parser.add_argument("--optimizer", type=str, default='adamw_hf', help="name of optimizer")
+
+    parser.add_argument("--gamma", type=float, default=1., help="name of loss")
+    parser.add_argument("--smoothing", type=float, default=0.1, help="smoothing factor for label smoothing loss")
 
     # training basic hyperparms
     parser.add_argument("--epochs", type=int, default=3, help="total number of training epochs")
@@ -63,7 +69,7 @@ def get_args():
     parser.add_argument("--eval_steps", type=int, default=500, help="number of evaluation steps")
     # --load_best_model_at_end requires the saving steps to be a round multiple of the evaluation steps, but found 500, which is not a round multiple of 3.
     parser.add_argument("--load_best_model_at_end", type=str2bool, default=True, help="load_best_model_at_end")
-    parser.add_argument("--save_total_limit", type=int, default=5, help="number of total save model.")
+    parser.add_argument("--save_total_limit", type=int, default=1, help="number of total save model.")
     parser.add_argument("--save_steps", type=int, default=500, help="log saving step.")
     
     parser.add_argument("--model_save_dir", type=str, default='./best_model', help="model ckpt")

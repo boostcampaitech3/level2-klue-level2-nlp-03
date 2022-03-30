@@ -102,3 +102,19 @@ def tokenized_dataset(dataset, tokenizer):
       add_special_tokens=True,
       )
   return tokenized_sentences
+
+
+def label_to_num(label):
+    num_label = []
+    with open('dict_label_to_num.pkl', 'rb') as f:
+        dict_label_to_num = pickle.load(f)
+    for v in label:
+        num_label.append(dict_label_to_num[v])
+
+    return num_label
+
+
+def get_cls_list(pd_dataset):
+    labels = label_to_num(pd_dataset['label'])
+    _, distr = np.unique(labels, return_counts=True)
+    return distr
