@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pickle
 import torch
-
+import os
 import torch.nn.functional as F
 import argparse
 import os
@@ -21,7 +21,7 @@ def main(args):
 
     dir = '/opt/ml/git/level2-klue-level2-nlp-03/eunki/code'
     path1 = os.path.join(args.save_dir,'submission_final_roberta_large.csv') # 가져올 csv 파일 주소 입력 필수!
-    path2 = os.path.join(args.save_dir,'submission_final_koelectra.csv')
+    path2 = os.path.join(args.save_dir,'submission_final_koelectra_base.csv')
 
 
     df1 = pd.read_csv(path1)
@@ -33,15 +33,14 @@ def main(args):
     # 0 제외 나머지 클래스에 0.1씩 더하기?
     df1['pred_label'] = df1['softmax'].apply(lambda x : num_to_label(np.argmax(x)))
     df1['probs'] = df1['probs'].apply(lambda x : str(list(x)))
-
+    if not os.path.exists(f'./prediction/final'):
+        os.makedirs(f'./prediction/final')
     df1.to_csv(f'./prediction/final/submission_final_model_ensemble.csv', index=False)
 
 if __name__ == '__main__':    
   # model dir
-  for i in range (5):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_name", type=int, default=i)
-    parser.add_argument("--save_dir", type=int, default="../prediction/final")
+    parser.add_argument("--save_dir", type=str, default="./prediction/final")
     args = parser.parse_args()
     print(args)
     main(args)
