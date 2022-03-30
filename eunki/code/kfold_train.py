@@ -7,9 +7,14 @@ import numpy as np
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
 from sklearn.model_selection import StratifiedKFold
 from transformers import AutoTokenizer, AutoConfig, EarlyStoppingCallback, AutoModelForSequenceClassification, Trainer, TrainingArguments, RobertaConfig, RobertaTokenizer, RobertaForSequenceClassification, BertTokenizer
+
 from load_data import *
+from trainer import *
+from loss import *
+
 import warnings
 warnings.filterwarnings('ignore')
+
 
 from transformers import (
     AutoTokenizer,
@@ -112,10 +117,13 @@ class Lite(LightningLite):
       total_train_dataset = load_data(args.train_data_dir, args.augmentation)
       # 먼저 중복여부 판별을 위한 코드
       total_train_dataset['is_duplicated'] = total_train_dataset['sentence'].duplicated(keep=False)
-      # dev_dataset = load_data("../dataset/train/dev.csv") # validation용 데이터는 따로 만드셔야 합니다.
+      
       result = label_to_num(total_train_dataset['label'].values)
       total_train_label = pd.DataFrame(data = result, columns = ['label'])
+
+      # dev_dataset = load_data("../dataset/train/dev.csv") # validation용 데이터는 따로 만드셔야 합니다.
       # dev_label = label_to_num(dev_dataset['label'].values)
+      
       kfold= StratifiedKFold(n_splits= 5, shuffle= True, random_state= 42)
       
       for fold, (train_idx, val_idx) in enumerate(kfold.split(total_train_dataset, total_train_label)):
@@ -224,7 +232,7 @@ class Lite(LightningLite):
 def make_dirs(args):
     # args에 지정된 폴더가 존재하나 해당 폴더가 없을 경우 대비
     # model save
-    os.makedirs(args.model_save_dir, exist_ok=True)
+    # os.makedirs(args.model_save_dir, exist_ok=True)
     # output
     os.makedirs(args.output_dir, exist_ok=True)
 
@@ -235,7 +243,7 @@ def main():
   seed_fix(args.seed)
   # make directories
   make_dirs(args)
-    # https://docs.wandb.ai/guides/integrations/huggingface
+  # https://docs.wandb.ai/guides/integrations/huggingface
 
     # 디버깅 때는 wandb 로깅 안하기 위해서
   if args.use_wandb:

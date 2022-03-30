@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F
 import argparse
 from tqdm import tqdm
+import os
 
 def main(args):
     def num_to_label(n):
@@ -36,14 +37,14 @@ def main(args):
     # 0 제외 나머지 클래스에 0.1씩 더하기?
     df1['pred_label'] = df1['softmax'].apply(lambda x : num_to_label(np.argmax(x)))
     df1['probs'] = df1['probs'].apply(lambda x : str(list(x)))
-
-    df1.to_csv(f'./prediction/final/submission_final_roberta_large.csv', index=False)
+    if not os.path.exists(f'./prediction/final'):
+        os.makedirs(f'./prediction/final')
+    df1.to_csv(f'./prediction/final/submission_final_koelectra_base.csv', index=False)
 
 if __name__ == '__main__':    
   # model dir
-  for i in range (5):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_name", type=str, default="roberta_large")
+    parser.add_argument("--model_name", type=str, default="koelectra-base-v3-discriminator")
     parser.add_argument('--fold_num', type=str, default=i)
     args = parser.parse_args()
     print(args)

@@ -65,7 +65,7 @@ def main(args):
   """
   device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
   # load tokenizer
-  Tokenizer_NAME = "klue/roberta-large"
+  Tokenizer_NAME = "monologg/koelectra-base-v3-discriminator"
   tokenizer = AutoTokenizer.from_pretrained(Tokenizer_NAME)
 
   ## load my model
@@ -104,7 +104,7 @@ if __name__ == '__main__':
   for i in range (5):
     parser = argparse.ArgumentParser()
     
-    parser.add_argument("--model_name", type=str, default="roberta-large")
+    parser.add_argument("--model_name", type=str, default="koelectra-base-v3-discriminator")
     args = parser.parse_args()
     parser.add_argument('--model_dir', type=str, default=f"./best_model_{i}/{args.model_name}/pytorch_model.bin")
     parser.add_argument('--fold_num', type=str, default=i)
