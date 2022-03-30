@@ -521,7 +521,7 @@ class RobertaClassificationLSTMHead(nn.Module):
             # 따라서 entity embedding을 더 입력으로 받거나 아니면 위에 처럼
             # 전체 token embedding sequence  넣는 것이 필요
             x = features[:, 0, :]  # take <s> token (equiv. to [CLS])
-            x = x.unsqueeze(dim=1)
+            x = x.unsqueeze(dim=1) # [batch_size, hidden_dim] -> [batch_size, 1, hidden_dim]
         x = self.dropout(x)
 
         # 향후 TODO: lstm의 output, hidden dim 나오는 방식
@@ -539,6 +539,7 @@ class RobertaClassificationBidirectionalLSTMHead(nn.Module):
     """
 
     # TODO: LSTM의 hidden dimension configuration @ 소연
+    # edit by seyeon
     def __init__(self, config):
         super().__init__()
         self.lstm = nn.LSTM(config.hidden_size, config.hidden_size, batch_first=True, bidirectional=True)
