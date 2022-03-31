@@ -141,7 +141,7 @@ def str2bool(v):
 
 if __name__ == '__main__':    
   # model dir
-  for i in range(2):
+  for i in range(5):
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, default="roberta-large")
     # entity_marker
