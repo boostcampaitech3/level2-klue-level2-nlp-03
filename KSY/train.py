@@ -172,10 +172,7 @@ def train(args,exp_full_name,reports='wandb'):
     if args.head_type =='base':
         # 아예 hugging face 지원 구조
         model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
-    elif args.head_type =='more_dense':
-        model = customRobertaForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
-    elif args.head_type =='lstm':
-        # 현재 lstm은 모든 sequence embedding 돌리고 마지막 hidden state(context vector 만)
+    else: # more_dense, lstm, modifedBiLSTM
         model = customRobertaForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
 
     print(model.config)
@@ -218,7 +215,7 @@ def train(args,exp_full_name,reports='wandb'):
         train_dataset=RE_train_dataset,  # training dataset
         eval_dataset=RE_eval_dataset,  # evaluation dataset
         compute_metrics=compute_metrics , # define metrics function
-        callbacks = [customWandbCallback(), EarlyStoppingCallback(early_stopping_patience= 5)]
+        callbacks = [customWandbCallback(), EarlyStoppingCallback(early_stopping_patience= 10)]
     )
 
     # train model

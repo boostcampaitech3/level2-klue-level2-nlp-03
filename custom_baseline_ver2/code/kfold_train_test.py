@@ -219,7 +219,7 @@ class Lite(LightningLite):
         train_dataset=RE_train_dataset,  # training dataset
         eval_dataset=RE_dev_dataset,  # evaluation dataset
         compute_metrics=compute_metrics , # define metrics function
-        callbacks = [customWandbCallback(), EarlyStoppingCallback(early_stopping_patience= 3)],
+        callbacks = [customWandbCallback(), EarlyStoppingCallback(early_stopping_patience= 4)],
         cls_list = cls_list,
         add_args = args
         )
