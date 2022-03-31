@@ -124,7 +124,7 @@ class Lite(LightningLite):
       # dev_dataset = load_data("../dataset/train/dev.csv") # validation용 데이터는 따로 만드셔야 합니다.
       # dev_label = label_to_num(dev_dataset['label'].values)
       
-      kfold= StratifiedKFold(n_splits= 5, shuffle= True, random_state= 42)
+      kfold= StratifiedKFold(n_splits= 5, shuffle= True, random_state= args.seed)
       
       for fold, (train_idx, val_idx) in enumerate(kfold.split(total_train_dataset, total_train_label)):
         
