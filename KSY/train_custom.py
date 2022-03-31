@@ -7,7 +7,7 @@ import sklearn
 import numpy as np
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
 from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification, Trainer, TrainingArguments, \
-    RobertaConfig, RobertaTokenizer, RobertaForSequenceClassification, BertTokenizer
+    RobertaConfig, RobertaTokenizer, RobertaForSequenceClassification, BertTokenizer,EarlyStoppingCallback
 from load_data import *
 
 # get arguments
@@ -22,7 +22,7 @@ from utils import plot_cm_by_num_samples, plot_cm_by_ratio
 from custom.callback import customWandbCallback
     #customTrainerState,customTrainerControl,customTrainerCallback
 from custom.trainer import customTrainer,customTrainer2
-
+from models.custom_roberta import customRobertaForSequenceClassification
 label_list = ['no_relation', 'org:top_members/employees', 'org:members',
                   'org:product', 'per:title', 'org:alternate_names',
                   'per:employee_of', 'org:place_of_headquarters', 'per:product',
@@ -150,8 +150,13 @@ def train(args,exp_full_name,reports='wandb'):
     # setting model hyperparameter
     model_config = AutoConfig.from_pretrained(MODEL_NAME)
     model_config.num_labels = args.num_labels
+    model_config.update({"head_type": args.head_type})
+    if args.head_type =='base':
+        # 아예 hugging face 지원 구조
+        model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
+    else: # more_dense, lstm, modifedBiLSTM
+        model = customRobertaForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
 
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
     print(model.config)
     model.parameters
     model.to(device)
@@ -215,13 +220,13 @@ def main():
     # os.environ["WANDB_DISABLED"] = "true"
     # 디버깅 때는 wandb 로깅 안하기 위해서
     if args.use_wandb:
-        # TODO; 실험 이름 convention은 천천히 정해볼까요?
+        # exp_full_name = f'{args.user_name}_{args.model_name}({args.head_type})_{args.split_mode}({args.eval_ratio})_{args.lr}(early)_{args.optimizer}_{args.loss_fn}'
         if args.loss_fn =='focalloss':
             exp_full_name = f'{args.user_name}_{args.model_name}_{args.split_mode}_{args.loss_fn}_ga{args.gamma}_{args.lr}_{args.optimizer}_{args.loss_fn}'
         elif args.loss_fn =='base':
             exp_full_name = f'{args.user_name}_{args.model_name}_{args.split_mode}_{args.loss_fn}_{args.lr}_{args.optimizer}_{args.loss_fn}'
         elif args.loss_fn =='labelsmoothingloss':
-            exp_full_name = f'{args.user_name}_{args.model_name}_{args.split_mode}_{args.loss_fn}_smoothing{args.smoothing}_{args.lr}_{args.optimizer}_{args.loss_fn}'
+            exp_full_name = f'{args.user_name}_{args.model_name}({args.head_type})_{args.split_mode}({args.eval_ratio})_{args.lr}(early)_{args.optimizer}_{args.loss_fn}'
         wandb.login()
 
         # project : 우리 그룹의 프로젝트 이름

@@ -81,7 +81,6 @@ class customTrainer2(Trainer):
 
         if add_args.loss_fn=='ldamloss':
             self.label_smoother = get_loss(add_args, cls_list)
-
         elif add_args.loss_fn =='focalloss':
             self.label_smoother = get_loss(add_args, cls_list)
         elif add_args.loss_fn =='labelsmoothingloss':
