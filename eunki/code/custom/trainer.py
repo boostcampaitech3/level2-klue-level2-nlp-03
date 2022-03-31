@@ -120,8 +120,8 @@ class customTrainer2(Trainer):
             # metrics에 confusion matrix를 추가한 값들이 self.state.log_history에 추가되었음
             # 이 부분이 self._save_checkpoint에서 self.state를 저장하기 때문에 figure 값은 제거하려함.
             # history가 list로 관리됨 ->  train, eval 순서로 append 때문에 eval은 마지막 요소에서 pop
-            self.state.log_history[-1].pop('eval_cm_ratio')
-            self.state.log_history[-1].pop('eval_cm_samples')
+            # self.state.log_history[-1].pop('eval_cm_ratio')
+            # self.state.log_history[-1].pop('eval_cm_samples')
             # for history in self.state.log_history:
             #     history
             self._report_to_hp_search(trial, epoch, metrics)
