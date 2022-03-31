@@ -39,7 +39,7 @@ def main(args):
     df1['probs'] = df1['probs'].apply(lambda x : str(list(x)))
     if not os.path.exists(f'./prediction/final'):
         os.makedirs(f'./prediction/final')
-    df1.to_csv(f'./prediction/final/submission_final_koelectra_base.csv', index=False)
+    df1.to_csv(f'./prediction/final/submission_final_roberta_large.csv', index=False)
 
 if __name__ == '__main__':    
   # model dir

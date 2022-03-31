@@ -1,3 +1,4 @@
+from distutils.command.config import config
 from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification, Trainer, TrainingArguments, AutoModel
 from torch.utils.data import DataLoader
 from load_data import *
@@ -9,6 +10,11 @@ import pickle as pickle
 import numpy as np
 import argparse
 from tqdm import tqdm
+
+from arguments import get_args
+
+from custom.trainer import customTrainer
+from models.custom_roberta import customRobertaForSequenceClassification
 
 def inference(model, tokenized_sent, device):
   """
@@ -65,18 +71,33 @@ def main(args):
   """
   device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
   # load tokenizer
-  Tokenizer_NAME = "monologg/koelectra-base-v3-discriminator"
+  Tokenizer_NAME = "klue/roberta-large"
   tokenizer = AutoTokenizer.from_pretrained(Tokenizer_NAME)
+  MODEL_NAME = args.model_dir
+
+  model_config = AutoConfig.from_pretrained(Tokenizer_NAME)
+  model_config.update({"head_type": args.head_type})
+  model_config.num_labels = 30
 
   ## load my model
   
-   # model dir.
-  model_config= AutoConfig.from_pretrained(Tokenizer_NAME)
-  model_config.num_labels= 30
-  model= AutoModelForSequenceClassification.from_pretrained(Tokenizer_NAME, config= model_config)
+  # model dir
+  
+  if args.head_type == 'base':
+    # 아예 hugging face 지원 구조
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
+  else:
+    model = customRobertaForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
   
   best_state_dict= torch.load(args.model_dir)
   model.load_state_dict(best_state_dict)
+
+  # model_config= AutoConfig.from_pretrained(Tokenizer_NAME)
+  # model_config.num_labels= 30
+  # model= AutoModelForSequenceClassification.from_pretrained(Tokenizer_NAME, config= model_config)
+  
+  # best_state_dict= torch.load(args.model_dir)
+  # model.load_state_dict(best_state_dict)
   model.parameters
   model.to(device)
 
@@ -104,10 +125,12 @@ if __name__ == '__main__':
   for i in range (5):
     parser = argparse.ArgumentParser()
     
-    parser.add_argument("--model_name", type=str, default="koelectra-base-v3-discriminator")
+    parser.add_argument("--model_name", type=str, default="roberta-large")
     args = parser.parse_args()
     parser.add_argument('--model_dir', type=str, default=f"./best_model_{i}/{args.model_name}/pytorch_model.bin")
-    parser.add_argument('--fold_num', type=str, default=i)
+    parser.add_argument('--fold_num', type=int, default=i)
+    parser.add_argument('--head_type', type=str,
+                      default="modifiedBiLSTM")
     args = parser.parse_args()
     print(args)
     main(args)
