@@ -123,7 +123,7 @@ class Lite(LightningLite):
       total_train_dataset = load_data(args.train_data_dir, args.augmentation)
       # 먼저 중복여부 판별을 위한 코드
       total_train_dataset['is_duplicated'] = total_train_dataset['sentence'].duplicated(keep=False)
-      
+    
       result = label_to_num(total_train_dataset['label'].values)
       total_train_label = pd.DataFrame(data = result, columns = ['label'])
 
@@ -185,8 +185,11 @@ class Lite(LightningLite):
 
         # 사용한 option 외에도 다양한 option들이 있습니다.
         # https://huggingface.co/transformers/main_classes/trainer.html#trainingarguments 참고해주세요.
+        
+        
+        output_dir = args.output_dir + f'/fold_{fold}'
         training_args = TrainingArguments(
-            output_dir=args.output_dir,  # output directory
+            output_dir=output_dir,  # output directory
             save_total_limit=args.save_total_limit,  # number of total save model.
             save_steps=args.save_steps,  # model saving step.
             num_train_epochs=args.epochs,  # total number of training epochs
@@ -248,7 +251,9 @@ class Lite(LightningLite):
 def make_dirs(args):
     # args에 지정된 폴더가 존재하나 해당 폴더가 없을 경우 대비
     # model save
-    # os.makedirs(args.model_save_dir, exist_ok=True)
+    model_save_dir = args.model_save_dir
+    for i in range(5):
+      os.makedirs(model_save_dir + f'/fold_{i}', exist_ok=True)
     # output
     os.makedirs(args.output_dir, exist_ok=True)
 
