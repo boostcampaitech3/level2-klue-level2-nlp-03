@@ -17,7 +17,7 @@ def main(args):
     def to_nparray(s) :
         return np.array(list(map(float, s[1:-1].split(','))))
 
-    dir = './'
+    dir = '/opt/ml/git/level2-klue-level2-nlp-03/eunki/code'
 
     path1 = f'./prediction/{args.model_name}/submission_0.csv'
     path2 = f'./prediction/{args.model_name}/submission_1.csv'
@@ -39,7 +39,7 @@ def main(args):
     df1['probs'] = df1['probs'].apply(lambda x : str(list(x)))
     if not os.path.exists(f'./prediction/final'):
         os.makedirs(f'./prediction/final')
-    df1.to_csv(f'./prediction/final/submission_final_koelectra_base.csv', index=False)
+    df1.to_csv(f'./prediction/final/submission_final_roberta_large.csv', index=False)
 
 if __name__ == '__main__':    
   # model dir

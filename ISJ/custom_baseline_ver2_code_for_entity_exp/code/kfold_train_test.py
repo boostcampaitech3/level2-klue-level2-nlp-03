@@ -12,6 +12,7 @@ from load_data import *
 from loss import *
 # added by sujeong;
 from entity_marker import *
+from utils import *
 
 from custom.callback import customWandbCallback
     #customTrainerState,customTrainerControl,customTrainerCallback
@@ -229,7 +230,7 @@ class Lite(LightningLite):
         train_dataset=RE_train_dataset,  # training dataset
         eval_dataset=RE_dev_dataset,  # evaluation dataset
         compute_metrics=compute_metrics , # define metrics function
-        callbacks = [customWandbCallback(), EarlyStoppingCallback(early_stopping_patience= 3)],
+        callbacks = [customWandbCallback(), EarlyStoppingCallback(early_stopping_patience= 4)],
         cls_list = cls_list,
         add_args = args
         )
@@ -281,7 +282,7 @@ def main():
     # name : 저장되는 실험 이름
      # entity : 우리 그룹/팀 이름
 
-    wandb.init(project='SujeongIm',
+    wandb.init(project=args.user_name,
                 name=exp_full_name,
                 entity='boostcamp-nlp3')  # nlp-03
     wandb.config.update(args)
@@ -304,3 +305,4 @@ if __name__ == '__main__':
   main()
 
 # export WANDB_PROJECT=KLUE
+

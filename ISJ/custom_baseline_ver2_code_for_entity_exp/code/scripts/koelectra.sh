@@ -1,6 +1,6 @@
 nohup python train.py --model_name monologg/koelectra-base-v3-discriminator \
                 --use_wandb True \
-                --user_name SujeongIm \
+                --user_name Eunki \
                 --exp_name model_ensemble \
                 --eval_steps 300 \
                 --save_steps 300 \

@@ -1,11 +1,11 @@
-python kfold_train_test.py --model_name klue/roberta-large \
+nohup python kfold_train_test.py --model_name klue/roberta-large \
                 --use_wandb True \
                 --user_name SujeongIm \
                 --exp_name file_ensemble \
                 --eval_steps 300 \
                 --save_steps 300 \
                 --load_best_model_at_end True \
-                --epochs 1 \
+                --epochs 5 \
                 --train_bs 32 \
                 --eval_bs 32 \
                 --loss_fn labelsmoothingloss \
