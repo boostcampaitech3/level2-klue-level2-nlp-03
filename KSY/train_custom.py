@@ -185,6 +185,8 @@ def train(args,exp_full_name,reports='wandb'):
         # Hugging face Trainer 내부 integration 된 wandb로 logging
         report_to=reports,
         run_name = exp_full_name,
+        fp16=True,
+        adafactor=True,
     )
     cls_list = get_cls_list(train_dataset)
     trainer = customTrainer2(
@@ -224,9 +226,11 @@ def main():
         if args.loss_fn =='focalloss':
             exp_full_name = f'{args.user_name}_{args.model_name}_{args.split_mode}_{args.loss_fn}_ga{args.gamma}_{args.lr}_{args.optimizer}_{args.loss_fn}'
         elif args.loss_fn =='base':
-            exp_full_name = f'{args.user_name}_{args.model_name}_{args.split_mode}_{args.loss_fn}_{args.lr}_{args.optimizer}_{args.loss_fn}'
+            exp_full_name = f'{args.user_name}_{args.model_name}({args.head_type})_{args.split_mode}_{args.loss_fn}_{args.lr}_{args.optimizer}_{args.loss_fn}'
         elif args.loss_fn =='labelsmoothingloss':
-            exp_full_name = f'{args.user_name}_{args.model_name}({args.head_type})_{args.split_mode}({args.eval_ratio})_{args.lr}(early)_{args.optimizer}_{args.loss_fn}'
+            exp_full_name = f'{args.user_name}_{args.model_name}({args.head_type})_{args.split_mode}({args.eval_ratio})_{args.lr}_{args.optimizer}_{args.loss_fn}({args.smoothing})'
+        elif args.loss_fn == 'weightedCE':
+            exp_full_name = f'{args.user_name}_{args.model_name}({args.head_type})_{args.split_mode}({args.eval_ratio})_{args.lr}_{args.optimizer}_{args.loss_fn}'
         wandb.login()
 
         # project : 우리 그룹의 프로젝트 이름
