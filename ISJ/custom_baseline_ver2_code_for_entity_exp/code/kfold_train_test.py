@@ -191,14 +191,17 @@ class Lite(LightningLite):
         model_config.num_labels = args.num_labels
         model_config.update({"head_type": args.head_type})
         model = customRobertaForSequenceClassification.from_pretrained(MODEL_NAME, config  = model_config )
-        if add_entity_marker:
+        if args.add_entity_marker:
           model.resize_token_embeddings(tokenizer.vocab_size + added_token_num)
         model.to(device)
 
         # 사용한 option 외에도 다양한 option들이 있습니다.
         # https://huggingface.co/transformers/main_classes/trainer.html#trainingarguments 참고해주세요.
+        
+        
+        output_dir = args.output_dir + f'/fold_{fold}'
         training_args = TrainingArguments(
-            output_dir=args.output_dir,  # output directory
+            output_dir=output_dir,  # output directory
             save_total_limit=args.save_total_limit,  # number of total save model.
             save_steps=args.save_steps,  # model saving step.
             num_train_epochs=args.epochs,  # total number of training epochs
@@ -218,7 +221,8 @@ class Lite(LightningLite):
             # https://docs.wandb.ai/guides/integrations/huggingface
             # Hugging face Trainer 내부 integration 된 wandb로 logging
             group_by_length= True,
-            
+            fp16 = True,
+            adafactor = True,
             report_to=reports,
             run_name = exp_full_name,
         )
@@ -231,7 +235,7 @@ class Lite(LightningLite):
         train_dataset=RE_train_dataset,  # training dataset
         eval_dataset=RE_dev_dataset,  # evaluation dataset
         compute_metrics=compute_metrics , # define metrics function
-        callbacks = [customWandbCallback(), EarlyStoppingCallback(early_stopping_patience= 4)],
+        callbacks = [customWandbCallback(), EarlyStoppingCallback(early_stopping_patience= 3)],
         cls_list = cls_list,
         add_args = args
         )
@@ -260,7 +264,9 @@ class Lite(LightningLite):
 def make_dirs(args):
     # args에 지정된 폴더가 존재하나 해당 폴더가 없을 경우 대비
     # model save
-    # os.makedirs(args.model_save_dir, exist_ok=True)
+    model_save_dir = args.model_save_dir
+    for i in range(5):
+      os.makedirs(model_save_dir + f'/fold_{i}', exist_ok=True)
     # output
     os.makedirs(args.output_dir, exist_ok=True)
 
@@ -306,4 +312,3 @@ if __name__ == '__main__':
   main()
 
 # export WANDB_PROJECT=KLUE
-

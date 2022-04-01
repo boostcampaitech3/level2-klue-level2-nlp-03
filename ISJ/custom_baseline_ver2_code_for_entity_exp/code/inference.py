@@ -122,7 +122,7 @@ def main(args):
   fold_num = args.fold_num
   if not os.path.exists(f'./prediction/{args.model_name}'):
     os.makedirs(f'./prediction/{args.model_name}')
-  output.to_csv(f'./prediction/{args.model_name}/submission_{fold_num}.csv', index=False) # 최종적으로 완성된 예측한 라벨 csv 파일 형태로 저장.
+  output.to_csv(f'./prediction/{args.model_name}/submission_{fold_num}_end.csv', index=False) # 최종적으로 완성된 예측한 라벨 csv 파일 형태로 저장.
   #### 필수!! ##############################################
   print('---- Finish! ----')
 
@@ -157,8 +157,8 @@ if __name__ == '__main__':
     # added by sujeong;
     parser.add_argument("--data_preprocessing", type=str2bool, default=False, help="If you want to make data preprocessed, set this argument True.")
     args = parser.parse_args()
-    print(i)
-    parser.add_argument('--model_dir', type=str, default=f"./best_model_{i}/{args.model_name}/pytorch_model.bin")
+    #parser.add_argument('--model_dir', type=str, default=f"./best_model_{i}/{args.model_name}/pytorch_model.bin")
+    parser.add_argument('--model_dir', type=str, default=f"./results/fold_{i}/checkpoint-2100/pytorch_model.bin")
     parser.add_argument('--fold_num', type=int, default=i)
     parser.add_argument('--head_type', type=str,
                       default="modifiedBiLSTM")
