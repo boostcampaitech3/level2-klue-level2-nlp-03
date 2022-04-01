@@ -191,7 +191,8 @@ class Lite(LightningLite):
         model_config.num_labels = args.num_labels
         model_config.update({"head_type": args.head_type})
         model = customRobertaForSequenceClassification.from_pretrained(MODEL_NAME, config  = model_config )
-        model.resize_token_embeddings(tokenizer.vocab_size + added_token_num)
+        if add_entity_marker:
+          model.resize_token_embeddings(tokenizer.vocab_size + added_token_num)
         model.to(device)
 
         # 사용한 option 외에도 다양한 option들이 있습니다.
