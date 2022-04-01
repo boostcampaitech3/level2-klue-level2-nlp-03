@@ -19,11 +19,11 @@ def main(args):
 
     dir = '/opt/ml/git/level2-klue-level2-nlp-03/eunki/code'
 
-    path1 = f'./prediction/{args.model_name}/submission_0.csv'
-    path2 = f'./prediction/{args.model_name}/submission_1.csv'
-    path3 = f'./prediction/{args.model_name}/submission_2.csv'
-    path4 = f'./prediction/{args.model_name}/submission_3.csv'
-    path5 = f'./prediction/{args.model_name}/submission_4.csv'
+    path1 = f'./prediction/{args.model_name}/submission_0_end.csv'
+    path2 = f'./prediction/{args.model_name}/submission_1_end.csv'
+    path3 = f'./prediction/{args.model_name}/submission_2_end.csv'
+    path4 = f'./prediction/{args.model_name}/submission_3_end.csv'
+    path5 = f'./prediction/{args.model_name}/submission_4_end.csv'
 
 
     df1 = pd.read_csv(path1)
@@ -39,7 +39,7 @@ def main(args):
     df1['probs'] = df1['probs'].apply(lambda x : str(list(x)))
     if not os.path.exists(f'./prediction/final'):
         os.makedirs(f'./prediction/final')
-    df1.to_csv(f'./prediction/final/submission_final_roberta_large.csv', index=False)
+    df1.to_csv(f'./prediction/final/submission_final_roberta_large_end.csv', index=False)
 
 if __name__ == '__main__':    
   # model dir

@@ -209,7 +209,8 @@ class Lite(LightningLite):
             # https://docs.wandb.ai/guides/integrations/huggingface
             # Hugging face Trainer 내부 integration 된 wandb로 logging
             group_by_length= True,
-            
+            fp16 = True,
+            adafactor = True,
             report_to=reports,
             run_name = exp_full_name,
         )
