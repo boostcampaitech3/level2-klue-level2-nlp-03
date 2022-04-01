@@ -37,6 +37,12 @@ def get_loss(args, cls_num_list):
         return LDAMLoss(cls_num_list, max_m=0.5, weight=per_cls_weights, s=30)
     elif args.loss_fn =='labelsmoothingloss':
         return LabelSmoothingLoss(classes=30, smoothing=args.smoothing)
+
+    elif args.loss_fn =='weightedCE':
+        print('weighted cross entropy')
+        weights = [1] * 30
+        weights[11], weights[13], weights[26] = 2, 2, 2
+        return nn.CrossEntropyLoss(torch.tensor(weights))
     else:
         raise NotImplementedError
 
