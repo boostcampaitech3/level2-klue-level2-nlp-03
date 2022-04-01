@@ -97,7 +97,7 @@ def compute_metrics(pred):
 
 def label_to_num(label):
   num_label = []
-  with open('/opt/ml/git/level2-klue-level2-nlp-03/eunki/code/dict_label_to_num.pkl', 'rb') as f:
+  with open('./dict_label_to_num.pkl', 'rb') as f:
     dict_label_to_num = pickle.load(f)
   for v in label:
     num_label.append(dict_label_to_num[v])
@@ -216,7 +216,7 @@ def main():
     # name : 저장되는 실험 이름
      # entity : 우리 그룹/팀 이름
 
-    wandb.init(project='SujeongIm',
+    wandb.init(project='Eunki',
                 name=exp_full_name,
                 entity='boostcamp-nlp3')  # nlp-03
     wandb.config.update(args)
