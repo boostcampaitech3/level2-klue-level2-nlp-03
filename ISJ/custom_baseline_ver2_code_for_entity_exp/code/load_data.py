@@ -27,8 +27,8 @@ def preprocessing_dataset(dataset, augmentation):
     subject_entity = []
     object_entity = []
     for i,j in zip(dataset['subject_entity'], dataset['object_entity']):
-      i = i[1:-1].split(',')[0].split(':')[1]
-      j = j[1:-1].split(',')[0].split(':')[1]
+      i = eval(i)['word']
+      j = eval(j)['word']
 
       subject_entity.append(i)
       object_entity.append(j)
@@ -39,6 +39,8 @@ def preprocessing_dataset(dataset, augmentation):
     subject_entity = []
     object_entity = []
     for i,j in zip(dataset['subject_entity'], dataset['object_entity']):
+      #i = eval(i)['word']
+      #j = eval(j)['word']
       i = i[1:-1].split(',')[0].split(':')[1]
       j = j[1:-1].split(',')[0].split(':')[1]
 
@@ -50,6 +52,8 @@ def preprocessing_dataset(dataset, augmentation):
     object_entity = []
     
     for i,j in zip(dataset['subject_entity'], dataset['object_entity']):
+      #i = eval(i)['word']
+      #j = eval(j)['word']
       i = i[1:-1].split(',')[0].split(':')[1]
       j = j[1:-1].split(',')[0].split(':')[1]
 
@@ -66,6 +70,8 @@ def preprocessing_dataset(dataset, augmentation):
     subject_entity = []
     object_entity = []
     for i,j in zip(dataset['subject_entity'], dataset['object_entity']):
+      #i = eval(i)['word']
+      #j = eval(j)['word']
       i = i[1:-1].split(',')[0].split(':')[1]
       j = j[1:-1].split(',')[0].split(':')[1]
 
@@ -97,8 +103,6 @@ def load_data(dataset_dir, augmentation, add_entity_marker, entity_marker_type, 
 
   # 데이터셋으로 제작
   dataset = preprocessing_dataset(pd_dataset, augmentation)
-
-
   
   return dataset
 
@@ -109,6 +113,7 @@ def tokenized_dataset(dataset, tokenizer):
     temp = ''
     temp = e01 + '[SEP]' + e02
     concat_entity.append(temp)
+  print(concat_entity)
   tokenized_sentences = tokenizer(
       concat_entity,
       list(dataset['sentence']),

@@ -1,4 +1,4 @@
-nohup python kfold_train_test_2.py --model_name klue/roberta-large \
+nohup python kfold_train_test.py --model_name klue/roberta-large \
 --user_name SujeongIm \
 --exp_name end_point_experiment \
 --eval_steps 600 \

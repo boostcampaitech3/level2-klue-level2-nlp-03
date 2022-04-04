@@ -84,44 +84,43 @@ def run_preprocess(df : pd.DataFrame):
     print("Run Preprocess...")
     df_preprocessed = pd.DataFrame(columns = ['id' , 'sentence', 'subject_entity', 'object_entity', 'label', 'source'])
     
-    for i, data in enumerate(df.iloc):
-            data_dict = dict(data)
-            i_d, sentence, subj, obj, label, source = data_dict['id'], data_dict['sentence'], data_dict['subject_entity'], data_dict['object_entity'], data_dict['label'], data_dict['source']
-            
-            # entity masking - sentence에서 entity 찾아서 subj, obj로 교체
-            if len(re.findall(r'(S_U_B_J)+|(O_B_J)+', sentence)) <= 0:
-                subj = re.sub(r"\'{2,}", r"'", subj)
-                obj = re.sub(r"\'{2,}", r"'", obj)
-                #if i==1725:
-                #    print(obj)
-                sentence = sentence.replace(eval(subj)['word'], 'S_U_B_J')
-                sentence = sentence.replace(eval(obj)['word'], 'O_B_J')
+    for i, data in tqdm(enumerate(df.iloc), total=len(df)):
+        data_dict = dict(data)
+        i_d, sentence, subj, obj, label, source = data_dict['id'], data_dict['sentence'], data_dict['subject_entity'], data_dict['object_entity'], data_dict['label'], data_dict['source']
 
-            # ----- 전처리 시작 ---- #
-            # 불필요한 괄호제거
-            sentence = remove_useless_breacket_revised(sentence)
-            
-            # 문장 부호 수정
-            sentence = clean_punc(sentence)
+        # entity masking - sentence에서 entity 찾아서 subj, obj로 교체
+        if len(re.findall(r'(S_U_B_J)+|(O_B_J)+', sentence)) <= 0:
+            subj = re.sub(r"\'{2,}", r"'", subj)
+            obj = re.sub(r"\'{2,}", r"'", obj)
+            #if i==1725:
+            #    print(obj)
+            sentence = sentence.replace(eval(subj)['word'], 'S_U_B_J')
+            sentence = sentence.replace(eval(obj)['word'], 'O_B_J')
 
-            # 연속 띄어쓰기 수정
-            sentence = re.sub(r"\s+", " ", sentence).strip()
+        # ----- 전처리 시작 ---- #
+        # 불필요한 괄호제거
+        sentence = remove_useless_breacket_revised(sentence)
 
-            #불용어 제거
-            #stop_word_list = ['']
-            #sentence = remove_stopwords(sentence, stop_word_list)
-            
-            #최소최대길이 제한
-            #if min_len > len(sentence) or len(sentence) > max_len:
-            #    continue
+        # 문장 부호 수정
+        sentence = clean_punc(sentence)
 
-            # ---- 전처리 종료
+        # 연속 띄어쓰기 수정
+        sentence = re.sub(r"\s+", " ", sentence).strip()
 
-            if sentence:
-                # entity masking 제거
-                sentence = sentence.replace('S_U_B_J', eval(subj)['word'])
-                sentence = sentence.replace('O_B_J', eval(obj)['word'])
-                df_preprocessed.loc[i] = [i_d, sentence, subj, obj, label, source]
+        #불용어 제거
+        #stop_word_list = ['']
+        #sentence = remove_stopwords(sentence, stop_word_list)
+
+        #최소최대길이 제한
+        #if min_len > len(sentence) or len(sentence) > max_len:
+        #    continue
+
+        # ---- 전처리 종료
+
+        if sentence:
+            # entity masking 제거
+            sentence = sentence.replace('S_U_B_J', eval(subj)['word'])
+            sentence = sentence.replace('O_B_J', eval(obj)['word'])
+            df_preprocessed.loc[i] = [i_d, sentence, subj, obj, label, source]
     print('Done!')
     return  df_preprocessed
-

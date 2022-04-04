@@ -131,7 +131,12 @@ class Lite(LightningLite):
       # augmentation 인자를 전달
       # edited by sujeong;(args.add_entity_marker, args.entity_marker_type, args.data_preprocessing 추가)
       print('Loading Data...')
+      """
+      # edited vy soyeon;(entity type2 + run preprocess 돌린 csv 파일 생성했기 때문에 해당 부분 불러오도록 함) 만약 다른 설정으로 할 경우 수행해야함(약 20분 소요)
       total_train_dataset = load_data(args.train_data_dir, args.augmentation, args.add_entity_marker, args.entity_marker_type, args.data_preprocessing)
+      """
+      # total_train_dataset = pd.read_csv('/opt/ml/dataset/train/final_preprocess_entity_marker2.csv')
+      total_train_dataset = pd.read_csv('./final_preprocess_entity_marker2.csv')
       print('Done!')
 
       # 먼저 중복여부 판별을 위한 코드
