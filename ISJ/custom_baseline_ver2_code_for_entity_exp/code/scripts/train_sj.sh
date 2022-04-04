@@ -12,6 +12,6 @@ nohup python kfold_train_test.py --model_name klue/roberta-large \
                 --smoothing 0.2 \
                 --head_type modifiedBiLSTM \
                 --train_data_dir /opt/ml/dataset/train/preprocess.csv \
-                --data_preprocessing False \
-                --add_entity_marker False \
-                --entity_marker_type entity_marker
+                --data_preprocessing True \
+                --add_entity_marker True \
+                --entity_marker_type entity_marker_punc

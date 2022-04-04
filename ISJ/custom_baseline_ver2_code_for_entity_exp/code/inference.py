@@ -156,9 +156,10 @@ if __name__ == '__main__':
     # preprocessing # 중복 괄호 제거, 이상한 문장 부호 수정, 연속 공백 수정
     # added by sujeong;
     parser.add_argument("--data_preprocessing", type=str2bool, default=False, help="If you want to make data preprocessed, set this argument True.")
+    
     args = parser.parse_args()
-    #parser.add_argument('--model_dir', type=str, default=f"./best_model_{i}/{args.model_name}/pytorch_model.bin")
-    parser.add_argument('--model_dir', type=str, default=f"./results/fold_{i}/checkpoint-2100/pytorch_model.bin")
+    parser.add_argument('--model_dir', type=str, default=f"./best_model_{i}/{args.model_name}/pytorch_model.bin")
+    #parser.add_argument('--model_dir', type=str, default=f"./results/fold_{i}/checkpoint-2100/pytorch_model.bin")
     parser.add_argument('--fold_num', type=int, default=i)
     parser.add_argument('--head_type', type=str,
                       default="modifiedBiLSTM")

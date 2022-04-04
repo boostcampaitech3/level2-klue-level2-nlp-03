@@ -85,6 +85,7 @@ def load_data(dataset_dir, augmentation, add_entity_marker, entity_marker_type, 
   # entity marker 추가
   # added by sujeong;
   print("add_entity_marker : " , add_entity_marker)
+  print("entity_marker_type: ", entity_marker_type)
   if add_entity_marker:
     pd_dataset = get_entity_marked_data(df=pd_dataset, marker_type=entity_marker_type)
 
