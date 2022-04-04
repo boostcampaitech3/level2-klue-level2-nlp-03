@@ -7,6 +7,12 @@ import torch
 from collections import defaultdict
 from sklearn.model_selection import train_test_split
 import numpy as np
+
+# added by eunki;
+from preprocess import *
+# added by sujeong;
+from entity_marker import *
+
 label_list = ['no_relation', 'org:top_members/employees', 'org:members',
                   'org:product', 'per:title', 'org:alternate_names',
                   'per:employee_of', 'org:place_of_headquarters', 'per:product',
@@ -33,19 +39,69 @@ class RE_Dataset(torch.utils.data.Dataset):
   def __len__(self):
     return len(self.labels)
 
+# eunki + sujeong;
+def preprocessing_dataset(dataset, augmentation='NO_AUG'):
+    """ 처음 불러온 csv 파일을 원하는 형태의 DataFrame으로 변경 시켜줍니다."""
 
-def preprocessing_dataset(dataset):
-  """ 처음 불러온 csv 파일을 원하는 형태의 DataFrame으로 변경 시켜줍니다."""
-  subject_entity = []
-  object_entity = []
-  for i,j in zip(dataset['subject_entity'], dataset['object_entity']):
-    i = i[1:-1].split(',')[0].split(':')[1]
-    j = j[1:-1].split(',')[0].split(':')[1]
+    if augmentation == "ONLY_AUG":
+        subject_entity = []
+        object_entity = []
+        for i, j in zip(dataset['subject_entity'], dataset['object_entity']):
+            i = i[1:-1].split(',')[0].split(':')[1]
+            j = j[1:-1].split(',')[0].split(':')[1]
 
-    subject_entity.append(i)
-    object_entity.append(j)
-  out_dataset = pd.DataFrame({'id':dataset['id'], 'sentence':dataset['sentence'],'subject_entity':subject_entity,'object_entity':object_entity,'label':dataset['label'],})
-  return out_dataset
+            subject_entity.append(i)
+            object_entity.append(j)
+        out_dataset = pd.DataFrame(
+            {'id': dataset['id'], 'sentence': dataset['en_trans_sentence'], 'subject_entity': subject_entity,
+             'object_entity': object_entity, 'label': dataset['label'], })
+        return out_dataset
+
+    elif augmentation == "AUG":
+        subject_entity = []
+        object_entity = []
+        for i, j in zip(dataset['subject_entity'], dataset['object_entity']):
+            i = i[1:-1].split(',')[0].split(':')[1]
+            j = j[1:-1].split(',')[0].split(':')[1]
+
+            subject_entity.append(i)
+            object_entity.append(j)
+        out_dataset_source = pd.DataFrame(
+            {'id': dataset['id'], 'sentence': dataset['sentence'], 'subject_entity': subject_entity,
+             'object_entity': object_entity, 'label': dataset['label'], })
+
+        subject_entity = []
+        object_entity = []
+
+        for i, j in zip(dataset['subject_entity'], dataset['object_entity']):
+            i = i[1:-1].split(',')[0].split(':')[1]
+            j = j[1:-1].split(',')[0].split(':')[1]
+
+            subject_entity.append(i)
+            object_entity.append(j)
+
+        out_dataset_aug = pd.DataFrame(
+            {'id': dataset['id'], 'sentence': dataset['en_trans_sentence'], 'subject_entity': subject_entity,
+             'object_entity': object_entity, 'label': dataset['label'], })
+
+        out_dataset = pd.concat([out_dataset_source, out_dataset_aug])
+
+        return out_dataset
+
+    else:  # default = "NO_AUG"
+        subject_entity = []
+        object_entity = []
+        for i, j in zip(dataset['subject_entity'], dataset['object_entity']):
+            i = i[1:-1].split(',')[0].split(':')[1]
+            j = j[1:-1].split(',')[0].split(':')[1]
+
+            subject_entity.append(i)
+            object_entity.append(j)
+        out_dataset = pd.DataFrame(
+            {'id': dataset['id'], 'sentence': dataset['sentence'], 'subject_entity': subject_entity,
+             'object_entity': object_entity, 'label': dataset['label'], })
+        return out_dataset
+
 
 def train_eval_dup_split(pd_dataset, seed, val_ratio):
     """
@@ -130,7 +186,7 @@ def load_split_dup_data(dataset_dir, seed=42, eval_ratio=0.2):
 
 def label_to_num(label):
     num_label = []
-    with open('dict_label_to_num.pkl', 'rb') as f:
+    with open('/opt/ml/level2-klue-level2-nlp-03/KSY/dict_label_to_num.pkl', 'rb') as f:
         dict_label_to_num = pickle.load(f)
     for v in label:
         num_label.append(dict_label_to_num[v])
@@ -251,12 +307,37 @@ def load_split_ent_data(dataset_dir, seed=42, eval_ratio=0.2):
 
     return train_dataset, eval_dataset
 
-def load_data(dataset_dir):
+def load_data_base(dataset_dir):
   """ csv 파일을 경로에 맡게 불러 옵니다. """
   pd_dataset = pd.read_csv(dataset_dir)
   dataset = preprocessing_dataset(pd_dataset)
   
   return dataset
+
+
+def load_data(dataset_dir, augmentation, add_entity_marker, entity_marker_type, data_preprocessing):
+    """ csv 파일을 경로에 맡게 불러 옵니다. """
+    pd_dataset = pd.read_csv(dataset_dir)
+
+    # 중복 데이터 제거를 위한 전처리
+    pd_dataset = preprocess(pd_dataset)
+
+    # entity marker 추가
+    # added by sujeong;
+    print("add_entity_marker : ", add_entity_marker)
+    if add_entity_marker:
+        pd_dataset = get_entity_marked_data(df=pd_dataset, marker_type=entity_marker_type)
+
+    # 데이터 전처리 (중복 괄호 제거, 이상한 문장 부호 수정, 연속된 공백 수정)
+    # added by sujeong;
+    print("data_preprocessing : ", data_preprocessing)
+    if data_preprocessing:
+        run_preprocess(pd_dataset)
+
+    # 데이터셋으로 제작
+    dataset = preprocessing_dataset(pd_dataset, augmentation)
+
+    return dataset
 
 def tokenized_dataset(dataset, tokenizer):
   """ tokenizer에 따라 sentence를 tokenizing 합니다."""

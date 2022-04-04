@@ -35,6 +35,20 @@ def get_args():
     parser.add_argument("--eval_ratio", type=float, default=0.2, help="training/eval split ratio")
     parser.add_argument("--split_mode", type=str, default='dup', help="strategy to split train, test")
 
+    # entity marker
+    # added by sujeong;
+    parser.add_argument("--add_entity_marker", type=str2bool, default=False, help="If you want to add entity marker, set this argument True.")
+    parser.add_argument("--entity_marker_type", type=str, default="entity_marker",
+                        help="type of entity marker"
+                            "`entity_marker`:  [E1] Bill [/E1] was born in [E2] Seattle [/E2]"
+                            "`entity_marker_punc`:  @ Bill @ was born in # Seattle #"
+                            "`typed_entity_marker`: <S:PERSON> Bill </S:PERSON> was born in <O:CITY> Seattle </O:CITY>."
+                            "`typed_entity_marker_punc`:  @ +person+ Bill @ was born in #^city^ Seattle #.")
+
+    # data preprocessing # 은기님이 작성하신 중복 데이터 제거와 다르게, 여러번 출현하는 괄호 제거 및 이상한 문자를 바르게 고치는 과정입니다.
+    # added by sujeong;
+    parser.add_argument("--data_preprocessing", type=str2bool, default=False, help="If you want to make data preprocessed, set this argument True.")
+
     # model
     # added by sykim;
     parser.add_argument("--model_name", type=str, default='klue/bert-base', help="name of model")
@@ -75,6 +89,6 @@ def get_args():
     parser.add_argument("--save_steps", type=int, default=500, help="log saving step.")
     # added by sykim;
     parser.add_argument("--model_save_dir", type=str, default='./best_model', help="model ckpt")
-
+    parser.add_argument("--augmentation", type=str, default='NO_AUG', help="augmentation")
     args = parser.parse_args()
     return args

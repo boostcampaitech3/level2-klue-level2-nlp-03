@@ -9,6 +9,13 @@
 - [ ] entity grouping & each model for corresponding grouping or hierarchical - PAPER SEARCH
 - [ ] ner + gives penalty when entity pairs are never to happen - mentor suggested
 
+### 04/03
+* code integration
+* model design undergoing
+
+### 03/31~04/03
+* code integration & experiments with ensemble version code
+
 ### 03/30
 * minor updates. using custom model and labelsmoothing loss
 
