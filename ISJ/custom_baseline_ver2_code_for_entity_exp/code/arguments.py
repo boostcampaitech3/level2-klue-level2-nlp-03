@@ -30,8 +30,8 @@ def get_args():
 
     # data
     # added by sykim;
-    parser.add_argument("--train_data_dir", type=str, default="/opt/ml/git/level2-klue-level2-nlp-03/eunki/dataset/train/train.csv", help="data directory") 
-    parser.add_argument("--test_data_dir", type=str, default="/opt/ml/git/level2-klue-level2-nlp-03/eunki/dataset/test_data/test.csv", help="data directory")
+    parser.add_argument("--train_data_dir", type=str, default="/opt/ml/dataset/train/train.csv", help="data directory") 
+    parser.add_argument("--test_data_dir", type=str, default="/opt/ml/dataset/test_data/test.csv", help="data directory")
     parser.add_argument("--eval_ratio", type=float, default=0.2, help="training/eval split ratio")
 
     # entity marker
