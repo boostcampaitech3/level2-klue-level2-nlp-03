@@ -147,7 +147,7 @@ if __name__ == '__main__':
     # entity_marker
     # added by sujeong;
     parser.add_argument("--add_entity_marker", type=str2bool, default=False, help="If you want to add entity marker, set this argument True.")
-    parser.add_argument("--entity_marker_type", type=str, default="entity_marker",
+    parser.add_argument("--entity_marker_type", type=str, default="entity_marker_punc",
                         help="type of entity marker"
                             "`entity_marker`:  [E1] Bill [/E1] was born in [E2] Seattle [/E2]"
                             "`entity_marker_punc`:  @ Bill @ was born in # Seattle #"
