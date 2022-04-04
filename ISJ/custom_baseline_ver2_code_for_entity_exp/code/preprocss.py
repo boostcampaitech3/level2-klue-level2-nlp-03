@@ -5,6 +5,7 @@ import torch
 import sklearn
 import numpy as np
 import re
+from tqdm import tqdm 
 
 def preprocess(df):
     result = remove_duplicate(df)
@@ -79,16 +80,20 @@ def clean_punc(text):
 
 # 전체 전처리 process
 def run_preprocess(df : pd.DataFrame):
+    
     print("Run Preprocess...")
     df_preprocessed = pd.DataFrame(columns = ['id' , 'sentence', 'subject_entity', 'object_entity', 'label', 'source'])
     
     for i, data in enumerate(df.iloc):
             data_dict = dict(data)
-            i_d, sentence, subj, obj, label, source = data_dict.values()
+            i_d, sentence, subj, obj, label, source = data_dict['id'], data_dict['sentence'], data_dict['subject_entity'], data_dict['object_entity'], data_dict['label'], data_dict['source']
             
             # entity masking - sentence에서 entity 찾아서 subj, obj로 교체
-            #print(eval(subj)['word'])
             if len(re.findall(r'(S_U_B_J)+|(O_B_J)+', sentence)) <= 0:
+                subj = re.sub(r"\'{2,}", r"'", subj)
+                obj = re.sub(r"\'{2,}", r"'", obj)
+                #if i==1725:
+                #    print(obj)
                 sentence = sentence.replace(eval(subj)['word'], 'S_U_B_J')
                 sentence = sentence.replace(eval(obj)['word'], 'O_B_J')
 
@@ -117,6 +122,6 @@ def run_preprocess(df : pd.DataFrame):
                 sentence = sentence.replace('S_U_B_J', eval(subj)['word'])
                 sentence = sentence.replace('O_B_J', eval(obj)['word'])
                 df_preprocessed.loc[i] = [i_d, sentence, subj, obj, label, source]
-
+    print('Done!')
     return  df_preprocessed
 

@@ -222,6 +222,7 @@ class Lite(LightningLite):
             # Hugging face Trainer 내부 integration 된 wandb로 logging
             group_by_length= True,
             fp16 = True,
+            #fp16_full_eval=True,
             adafactor = True,
             report_to=reports,
             run_name = exp_full_name,
@@ -289,9 +290,10 @@ def main():
     # name : 저장되는 실험 이름
      # entity : 우리 그룹/팀 이름
 
-    wandb.init(project=args.user_name,
+    wandb.init(project='KLUE', #args.user_name,
                 name=exp_full_name,
-                entity='boostcamp-nlp3')  # nlp-03
+                entity='sujeongim')
+                #entity='boostcamp-nlp3')  # nlp-03
     wandb.config.update(args)
 
     print('#######################')
