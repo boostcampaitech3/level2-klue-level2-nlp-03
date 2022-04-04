@@ -1,3 +1,4 @@
+# 그냥 KFold 버전
 import pickle as pickle
 import os
 import pandas as pd
@@ -5,7 +6,7 @@ import torch
 import sklearn
 import numpy as np
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedKFold, KFold
 from transformers import AutoTokenizer, AutoConfig, EarlyStoppingCallback, AutoModelForSequenceClassification, Trainer, TrainingArguments, RobertaConfig, RobertaTokenizer, RobertaForSequenceClassification, BertTokenizer
 
 from load_data import *
@@ -142,7 +143,8 @@ class Lite(LightningLite):
       # dev_dataset = load_data("../dataset/train/dev.csv") # validation용 데이터는 따로 만드셔야 합니다.
       # dev_label = label_to_num(dev_dataset['label'].values)
       
-      kfold= StratifiedKFold(n_splits=5, shuffle= True, random_state= 42)
+      # kfold= StratifiedKFold(n_splits= 10, shuffle= True, random_state= 42)
+      kfold = KFold(n_splits=10, shuffle=True, random_state=42)
       
       print('Start Training...')
       for fold, (train_idx, val_idx) in enumerate(kfold.split(total_train_dataset, total_train_label)):
