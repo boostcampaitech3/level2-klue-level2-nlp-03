@@ -72,7 +72,7 @@ def get_entity_marked_data(df : pd.DataFrame, marker_type : str):
     
     df_entity_marked = pd.DataFrame(columns = ['id' , 'sentence', 'subject_entity', 'object_entity', 'label', 'source'])
 
-    for i, data in enumerate(tqdm(df.iloc)):
+    for i, data in tqdm(enumerate(df.iloc), total= len(df)):
         data_dict = dict(data)
         i_d, sentence, subj, obj, label, source = data_dict['id'], data_dict['sentence'], data_dict['subject_entity'], data_dict['object_entity'], data_dict['label'], data_dict['source']
         
@@ -138,5 +138,6 @@ def get_entity_marked_data(df : pd.DataFrame, marker_type : str):
             print(sentence)
         # 5. 가공한 데이터 추가
         df_entity_marked.loc[i] = [i_d, sentence, subj, obj, label, source]
+
     print('Done!')
     return df_entity_marked
