@@ -88,7 +88,7 @@ def load_data(dataset_dir, augmentation, add_entity_marker, entity_marker_type, 
   print("entity_marker_type: ", entity_marker_type)
   if add_entity_marker:
     pd_dataset = get_entity_marked_data(df=pd_dataset, marker_type=entity_marker_type)
-
+    # train_sy.sh 기준으로 여기까지 완료된 파일 : 'preprocess_entity_marker2.csv
   # 데이터 전처리 (중복 괄호 제거, 이상한 문장 부호 수정, 연속된 공백 수정)
   # added by sujeong;
   print("data_preprocessing : ", data_preprocessing)
@@ -97,7 +97,7 @@ def load_data(dataset_dir, augmentation, add_entity_marker, entity_marker_type, 
 
   # 데이터셋으로 제작
   dataset = preprocessing_dataset(pd_dataset, augmentation)
-
+  # train_sy.sh 기준으로 여기까지 완료된 파일 : 'final_preprocess_entity_marker2.csv
 
   
   return dataset
