@@ -1,4 +1,3 @@
-# 그냥 KFold 버전
 import pickle as pickle
 import os
 import pandas as pd

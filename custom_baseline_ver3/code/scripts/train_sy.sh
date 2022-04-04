@@ -12,7 +12,7 @@ nohup python kfold_train_test.py --model_name klue/roberta-large \
                 --smoothing 0.2 \
                 --head_type more_dense \
                 --save_total_limit 4 \
-                --lr 2e-5
+                --lr 2e-5 \
                 --train_data_dir /opt/ml/dataset/train/preprocess.csv \
                 --data_preprocessing True \
                 --add_entity_marker True \
