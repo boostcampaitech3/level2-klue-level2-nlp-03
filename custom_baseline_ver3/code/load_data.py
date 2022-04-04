@@ -27,8 +27,6 @@ def preprocessing_dataset(dataset, augmentation):
     subject_entity = []
     object_entity = []
     for i,j in zip(dataset['subject_entity'], dataset['object_entity']):
-      #i = eval(i)['word']
-      #j = eval(j)['word']
       i = i[1:-1].split(',')[0].split(':')[1]
       j = j[1:-1].split(',')[0].split(':')[1]
 
@@ -41,8 +39,6 @@ def preprocessing_dataset(dataset, augmentation):
     subject_entity = []
     object_entity = []
     for i,j in zip(dataset['subject_entity'], dataset['object_entity']):
-      #i = eval(i)['word']
-      #j = eval(j)['word']
       i = i[1:-1].split(',')[0].split(':')[1]
       j = j[1:-1].split(',')[0].split(':')[1]
 
@@ -54,8 +50,6 @@ def preprocessing_dataset(dataset, augmentation):
     object_entity = []
     
     for i,j in zip(dataset['subject_entity'], dataset['object_entity']):
-      #i = eval(i)['word']
-      #j = eval(j)['word']
       i = i[1:-1].split(',')[0].split(':')[1]
       j = j[1:-1].split(',')[0].split(':')[1]
 
@@ -72,8 +66,6 @@ def preprocessing_dataset(dataset, augmentation):
     subject_entity = []
     object_entity = []
     for i,j in zip(dataset['subject_entity'], dataset['object_entity']):
-      #i = eval(i)['word']
-      #j = eval(j)['word']
       i = i[1:-1].split(',')[0].split(':')[1]
       j = j[1:-1].split(',')[0].split(':')[1]
 
@@ -96,7 +88,7 @@ def load_data(dataset_dir, augmentation, add_entity_marker, entity_marker_type, 
   print("entity_marker_type: ", entity_marker_type)
   if add_entity_marker:
     pd_dataset = get_entity_marked_data(df=pd_dataset, marker_type=entity_marker_type)
-
+    # train_sy.sh 기준으로 여기까지 완료된 파일 : 'preprocess_entity_marker2.csv
   # 데이터 전처리 (중복 괄호 제거, 이상한 문장 부호 수정, 연속된 공백 수정)
   # added by sujeong;
   print("data_preprocessing : ", data_preprocessing)
@@ -105,7 +97,9 @@ def load_data(dataset_dir, augmentation, add_entity_marker, entity_marker_type, 
 
   # 데이터셋으로 제작
   dataset = preprocessing_dataset(pd_dataset, augmentation)
+  # train_sy.sh 기준으로 여기까지 완료된 파일 : 'final_preprocess_entity_marker2.csv
 
+  
   return dataset
 
 def tokenized_dataset(dataset, tokenizer):
@@ -115,7 +109,6 @@ def tokenized_dataset(dataset, tokenizer):
     temp = ''
     temp = e01 + '[SEP]' + e02
     concat_entity.append(temp)
-  print(concat_entity)
   tokenized_sentences = tokenizer(
       concat_entity,
       list(dataset['sentence']),
