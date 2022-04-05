@@ -78,8 +78,9 @@ class RobertaEmbeddings(nn.Module):
         # embedding dimension 은 vocab추가 시 config.vocab_size 변동
         self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=config.pad_token_id)
         self.position_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size)
-        self.token_type_embeddings = nn.Embedding(config.type_vocab_size, config.hidden_size)
-
+        self.token_type_embeddings = nn.Embedding(config.type_vocab_size, config.hidden_size) # roberta-large 1 / bert-base 2
+                                                    # 0,1
+        # self.entity_type_embeddings = nn.Embedding(2, config.hidden_size)
         # self.LayerNorm is not snake-cased to stick with TensorFlow model variable name and be able to load
         # any TensorFlow checkpoint file
         self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
@@ -132,8 +133,9 @@ class RobertaEmbeddings(nn.Module):
         if inputs_embeds is None:
             inputs_embeds = self.word_embeddings(input_ids)
         token_type_embeddings = self.token_type_embeddings(token_type_ids)
-
+        # entity_type_embeddings = self.entity_type_embeddings(e1_mask)
         embeddings = inputs_embeds + token_type_embeddings
+        # embeddings += entity_type_embeddings
         if self.position_embedding_type == "absolute":
             position_embeddings = self.position_embeddings(position_ids)
             embeddings += position_embeddings
@@ -371,7 +373,7 @@ class customRobertaModel(RobertaPreTrainedModel):
             `past_key_values`).
         """
         print('inside the model')
-        breakpoint()
+        # breakpoint()
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
@@ -431,7 +433,7 @@ class customRobertaModel(RobertaPreTrainedModel):
         # and head_mask is converted to shape [num_hidden_layers x batch x num_heads x seq_length x seq_length]
         head_mask = self.get_head_mask(head_mask, self.config.num_hidden_layers)
         print('head masking')
-        breakpoint()
+
         embedding_output = self.embeddings(
             input_ids=input_ids,
             position_ids=position_ids,
@@ -440,7 +442,7 @@ class customRobertaModel(RobertaPreTrainedModel):
             past_key_values_length=past_key_values_length,
         )
         print('embedding')
-        breakpoint()
+
         encoder_outputs = self.encoder(
             embedding_output,
             attention_mask=extended_attention_mask,
@@ -480,19 +482,31 @@ class RobertaClassificationHead(nn.Module):
     def __init__(self, config):
         super().__init__()
         # config.hidden_size -> 2*config.hidden_size로 해봄
+        # self.dense = nn.Linear(3*config.hidden_size, config.hidden_size )
+        #
         self.dense = nn.Linear(config.hidden_size, 2*config.hidden_size)
         classifier_dropout = (
             config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
         )
         self.dropout = nn.Dropout(classifier_dropout)
+        # self.out_proj = nn.Linear(config.hidden_size, config.num_labels)
         self.out_proj = nn.Linear(2*config.hidden_size, config.num_labels)
 
-    def forward(self, features, avg = False, **kwargs):
+    def forward(self, features, e1_mask, e2_mask, avg = False, **kwargs):
         # avg or use cls token
+        breakpoint()
+        subj, obj = features[:,e1_mask] , feature[:,e2_mask]
+        # subj [bs, subj_길이, hidden_dim]
+        # subj.mean() -> [bs, hidden_dim]
+
+        # obj [bs, subj_길이, hidden_dim]
+        # obj.mean() -> [bs, hidden_dim]
         if avg:
             x = torch.mean(features,dim=1)
         else:
             x = features[:, 0, :]  # take <s> token (equiv. to [CLS])
+        # x(CLS) dim -> [bs, hidden_dim]
+        # all = torch.cat([subj, obj, CLS]) -> [bs, 3*hidden_dim]
         x = self.dropout(x)
         x = self.dense(x)
         x = torch.tanh(x)
@@ -643,6 +657,7 @@ class customRobertaForSequenceClassification(RobertaPreTrainedModel):
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
+        e1_mask, e2_mask
     ) -> Union[Tuple, SequenceClassifierOutput]:
         r"""
         labels (`torch.LongTensor` of shape `(batch_size,)`, *optional*):
@@ -664,12 +679,13 @@ class customRobertaForSequenceClassification(RobertaPreTrainedModel):
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
+            e1_mask, e2_mask
         )
         # TODO: 위에서 정의된 model의 아웃풋으로 나오게 되면, 해당 output을 사용하고
         # sequence_output으로 classifier에 넘기게 됩니다. 이때 어떤 값이 넘어가고, dimension을 갖는지 확인 필요합니다.
         sequence_output = outputs[0]
         # breakpoint()
-        logits = self.classifier(sequence_output)
+        logits = self.classifier(sequence_output, e1_mask, e2_mask)
 
         loss = None
         if labels is not None:
@@ -720,7 +736,7 @@ if __name__=='__main__':
     # breakpoint()
     # model = RobertaModel(conf)
     model =customRobertaForSequenceClassification(conf)
-    breakpoint()
+
     # model = RobertaForSequenceClassification(conf)
 
     print(model)

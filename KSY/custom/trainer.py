@@ -156,6 +156,30 @@ class customTrainer2(Trainer):
             loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
 
         return (loss, outputs) if return_outputs else loss
+import os, json
+import importlib.util
+def is_sagemaker_mp_enabled():
+    # Get the sagemaker specific mp parameters from smp_options variable.
+    smp_options = os.getenv("SM_HP_MP_PARAMETERS", "{}")
+    try:
+        # Parse it and check the field "partitions" is included, it is required for model parallel.
+        smp_options = json.loads(smp_options)
+        if "partitions" not in smp_options:
+            return False
+    except json.JSONDecodeError:
+        return False
+
+    # Get the sagemaker specific framework parameters from mpi_options variable.
+    mpi_options = os.getenv("SM_FRAMEWORK_PARAMS", "{}")
+    try:
+        # Parse it and check the field "sagemaker_distributed_dataparallel_enabled".
+        mpi_options = json.loads(mpi_options)
+        if not mpi_options.get("sagemaker_mpi_enabled", False):
+            return False
+    except json.JSONDecodeError:
+        return False
+    # Lastly, check if the `smdistributed` module is present.
+    return importlib.util.find_spec("smdistributed") is not None
 
 class customTrainer3(Trainer):
     def __init__(self, add_args,cls_list=None, *args, **kwargs):
@@ -212,102 +236,103 @@ class customTrainer3(Trainer):
             self.control = self.callback_handler.on_save(self.args, self.state, self.control)
 
 
-    def get_train_dataloader(self) -> DataLoader:
-        """
-        Returns the training [`~torch.utils.data.DataLoader`].
-        Will use no sampler if `self.train_dataset` does not implement `__len__`, a random sampler (adapted to
-        distributed training if necessary) otherwise.
-        Subclass and override this method if you want to inject some custom behavior.
-        """
-        breakpoint()
-        if self.train_dataset is None:
-            raise ValueError("Trainer: training requires a train_dataset.")
-        breakpoint()
-        train_dataset = self.train_dataset
-        if is_datasets_available() and isinstance(train_dataset, datasets.Dataset):
-            train_dataset = self._remove_unused_columns(train_dataset, description="training")
+    # def get_train_dataloader(self) -> DataLoader:
+    #     """
+    #     Returns the training [`~torch.utils.data.DataLoader`].
+    #     Will use no sampler if `self.train_dataset` does not implement `__len__`, a random sampler (adapted to
+    #     distributed training if necessary) otherwise.
+    #     Subclass and override this method if you want to inject some custom behavior.
+    #     """
+    #
+    #     if self.train_dataset is None:
+    #         raise ValueError("Trainer: training requires a train_dataset.")
+    #
+    #     train_dataset = self.train_dataset
+    #     if is_datasets_available() and isinstance(train_dataset, datasets.Dataset):
+    #         train_dataset = self._remove_unused_columns(train_dataset, description="training")
+    #
+    #     if isinstance(train_dataset, torch.utils.data.IterableDataset):
+    #         if self.args.world_size > 1:
+    #             train_dataset = IterableDatasetShard(
+    #                 train_dataset,
+    #                 batch_size=self.args.train_batch_size,
+    #                 drop_last=self.args.dataloader_drop_last,
+    #                 num_processes=self.args.world_size,
+    #                 process_index=self.args.process_index,
+    #             )
+    #
+    #         return DataLoader(
+    #             train_dataset,
+    #             batch_size=self.args.per_device_train_batch_size,
+    #             collate_fn=self.data_collator,
+    #             num_workers=self.args.dataloader_num_workers,
+    #             pin_memory=self.args.dataloader_pin_memory,
+    #         )
+    #
+    #     train_sampler = self._get_train_sampler()
+    #
+    #     return DataLoader(
+    #         train_dataset,
+    #         batch_size=self.args.train_batch_size,
+    #         sampler=train_sampler,
+    #         collate_fn=self.data_collator,
+    #         drop_last=self.args.dataloader_drop_last,
+    #         num_workers=self.args.dataloader_num_workers,
+    #         pin_memory=self.args.dataloader_pin_memory,
+    #     )
 
-        if isinstance(train_dataset, torch.utils.data.IterableDataset):
-            if self.args.world_size > 1:
-                train_dataset = IterableDatasetShard(
-                    train_dataset,
-                    batch_size=self.args.train_batch_size,
-                    drop_last=self.args.dataloader_drop_last,
-                    num_processes=self.args.world_size,
-                    process_index=self.args.process_index,
-                )
-
-            return DataLoader(
-                train_dataset,
-                batch_size=self.args.per_device_train_batch_size,
-                collate_fn=self.data_collator,
-                num_workers=self.args.dataloader_num_workers,
-                pin_memory=self.args.dataloader_pin_memory,
-            )
-
-        train_sampler = self._get_train_sampler()
-
-        return DataLoader(
-            train_dataset,
-            batch_size=self.args.train_batch_size,
-            sampler=train_sampler,
-            collate_fn=self.data_collator,
-            drop_last=self.args.dataloader_drop_last,
-            num_workers=self.args.dataloader_num_workers,
-            pin_memory=self.args.dataloader_pin_memory,
-        )
-
-    def training_step(self, model, inputs):
-        """
-        Perform a training step on a batch of inputs.
-        Subclass and override to inject custom behavior.
-        Args:
-            model (`nn.Module`):
-                The model to train.
-            inputs (`Dict[str, Union[torch.Tensor, Any]]`):
-                The inputs and targets of the model.
-                The dictionary will be unpacked before being fed to the model. Most models expect the targets under the
-                argument `labels`. Check your model's documentation for all accepted arguments.
-        Return:
-            `torch.Tensor`: The tensor with training loss on this batch.
-        """
-        model.train()
-        breakpoint()
-        inputs = self._prepare_inputs(inputs)
-        breakpoint()
-        if is_sagemaker_mp_enabled():
-            scaler = self.scaler if self.do_grad_scaling else None
-            loss_mb = smp_forward_backward(model, inputs, self.args.gradient_accumulation_steps, scaler=scaler)
-            return loss_mb.reduce_mean().detach().to(self.args.device)
-
-        with self.autocast_smart_context_manager():
-            loss = self.compute_loss(model, inputs)
-
-        if self.args.n_gpu > 1:
-            loss = loss.mean()  # mean() to average on multi-gpu parallel training
-
-        if self.args.gradient_accumulation_steps > 1 and not self.deepspeed:
-            # deepspeed handles loss scaling by gradient_accumulation_steps in its `backward`
-            loss = loss / self.args.gradient_accumulation_steps
-
-        if self.do_grad_scaling:
-            self.scaler.scale(loss).backward()
-        elif self.use_apex:
-            with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-                scaled_loss.backward()
-        elif self.deepspeed:
-            # loss gets scaled under gradient_accumulation_steps in deepspeed
-            loss = self.deepspeed.backward(loss)
-        else:
-            loss.backward()
-
-        return loss.detach()
+    # def training_step(self, model, inputs):
+    #     """
+    #     Perform a training step on a batch of inputs.
+    #     Subclass and override to inject custom behavior.
+    #     Args:
+    #         model (`nn.Module`):
+    #             The model to train.
+    #         inputs (`Dict[str, Union[torch.Tensor, Any]]`):
+    #             The inputs and targets of the model.
+    #             The dictionary will be unpacked before being fed to the model. Most models expect the targets under the
+    #             argument `labels`. Check your model's documentation for all accepted arguments.
+    #     Return:
+    #         `torch.Tensor`: The tensor with training loss on this batch.
+    #     """
+    #     model.train()
+    #     breakpoint()
+    #     inputs = self._prepare_inputs(inputs)
+    #     breakpoint()
+    #     if is_sagemaker_mp_enabled():
+    #         scaler = self.scaler if self.do_grad_scaling else None
+    #         loss_mb = smp_forward_backward(model, inputs, self.args.gradient_accumulation_steps, scaler=scaler)
+    #         return loss_mb.reduce_mean().detach().to(self.args.device)
+    #
+    #     with self.autocast_smart_context_manager():
+    #         loss = self.compute_loss(model, inputs)
+    #
+    #     if self.args.n_gpu > 1:
+    #         loss = loss.mean()  # mean() to average on multi-gpu parallel training
+    #
+    #     if self.args.gradient_accumulation_steps > 1 and not self.deepspeed:
+    #         # deepspeed handles loss scaling by gradient_accumulation_steps in its `backward`
+    #         loss = loss / self.args.gradient_accumulation_steps
+    #
+    #     if self.do_grad_scaling:
+    #         self.scaler.scale(loss).backward()
+    #     elif self.use_apex:
+    #         with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+    #             scaled_loss.backward()
+    #     elif self.deepspeed:
+    #         # loss gets scaled under gradient_accumulation_steps in deepspeed
+    #         loss = self.deepspeed.backward(loss)
+    #     else:
+    #         loss.backward()
+    #
+    #     return loss.detach()
 
     def compute_loss(self, model, inputs, return_outputs=False):
         """
         How the loss is computed by Trainer. By default, all models return the loss in the first element.
         Subclass and override for custom behavior.
         """
+        print('compute_loss')
         breakpoint()
         if self.label_smoother is not None and "labels" in inputs:
             labels = inputs.pop("labels")

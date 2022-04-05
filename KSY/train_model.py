@@ -22,8 +22,8 @@ from custom.callback import customWandbCallback
 from custom.trainer import customTrainer, customTrainer2,customTrainer3
 from train import get_args,seed_fix
 
-# from models.custom_roberta_test import customRobertaForSequenceClassification
-from models.custom_roberta import customRobertaForSequenceClassification
+from models.custom_roberta_test import customRobertaForSequenceClassification
+# from models.custom_roberta import customRobertaForSequenceClassification
 def compute_metrics(pred):
     """ validation을 위한 metrics function """
     global label_list
@@ -52,28 +52,37 @@ args = get_args()
 args.train_data_dir = "/opt/ml/dataset/train/train.csv"
 seed_fix(args.seed)
 
-MODEL_NAME = 'klue/roberta-large'
+MODEL_NAME = 'klue/bert-base' # 'klue/roberta-large'
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 # added_token_num, tokenizer = add_special_token(tokenizer, args.entity_marker_type)
 # total_train_dataset = load_data(args.train_data_dir, args.augmentation, args.add_entity_marker, args.entity_marker_type, args.data_preprocessing)
 
 # breakpoint()
 
-train_dataset, eval_dataset = load_split_data(args.train_data_dir,
-                                                          args.seed,
-                                                          args.eval_ratio)
-train_label = label_to_num(train_dataset['label'].values)
-eval_label = label_to_num(eval_dataset['label'].values)
+# train_dataset, eval_dataset = load_split_data(args.train_data_dir,
+#                                                           args.seed,
+#                                                           args.eval_ratio,
+#                                                           augmentation='NO_AUG+IDX')
+# train_label = label_to_num(train_dataset['label'].values)
+# eval_label = label_to_num(eval_dataset['label'].values)
 
-tokenized_train = tokenized_dataset(train_dataset, tokenizer)
-tokenized_eval = tokenized_dataset(eval_dataset, tokenizer)
+# tokenized_train = tokenized_dataset(train_dataset, tokenizer)
+# tokenized_eval = tokenized_dataset(eval_dataset, tokenizer)
+
+# tokenized_train = tokenized_dataset_IDX(train_dataset, tokenizer)
+# tokenized_eval = tokenized_dataset_IDX(eval_dataset, tokenizer)
 
 # make dataset for pytorch.
-RE_train_dataset = RE_Dataset(tokenized_train, train_label)
-RE_eval_dataset = RE_Dataset(tokenized_eval, eval_label)
+# RE_train_dataset = RE_Dataset(tokenized_train, train_label)
+# RE_eval_dataset = RE_Dataset(tokenized_eval, eval_label)
+
+# RE_train_dataset = RE_Dataset_IDX(tokenized_train, train_label)
+# breakpoint()
+# RE_eval_dataset = RE_Dataset_IDX(tokenized_eval, eval_label)
+
 # RE_dev_dataset = RE_Dataset(tokenized_dev, dev_label)
 
-device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
+device = 'cpu' #torch.device(args.device if torch.cuda.is_available() else 'cpu')
 
 print(device)
 # setting model hyperparameter
@@ -81,9 +90,10 @@ model_config = AutoConfig.from_pretrained(MODEL_NAME)
 model_config.num_labels = args.num_labels
 # model_config.vocab_size+=added_token_num
 # model_config.update({"head_type": args.head_type})
-model_config.update({"head_type": 'dense_conv1'})
+model_config.update({"head_type": 'more_dense'})
 model = customRobertaForSequenceClassification.from_pretrained(MODEL_NAME,
                                                                config  = model_config )
+breakpoint()
 # model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
 print(model.config)
 model.parameters
@@ -116,7 +126,7 @@ training_args = TrainingArguments(
 )
 
 cls_list = get_cls_list(train_dataset)
-trainer = customTrainer2(
+trainer = customTrainer3(
     model=model,  # the instantiated 🤗 Transformers model to be trained
     args=training_args,  # training arguments, defined above
     train_dataset=RE_train_dataset,  # training dataset
