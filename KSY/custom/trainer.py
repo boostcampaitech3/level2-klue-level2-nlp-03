@@ -332,8 +332,8 @@ class customTrainer3(Trainer):
         How the loss is computed by Trainer. By default, all models return the loss in the first element.
         Subclass and override for custom behavior.
         """
-        print('compute_loss')
-        breakpoint()
+
+
         if self.label_smoother is not None and "labels" in inputs:
             labels = inputs.pop("labels")
         else:
