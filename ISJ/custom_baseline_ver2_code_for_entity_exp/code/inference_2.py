@@ -160,7 +160,26 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     #parser.add_argument('--model_dir', type=str, default=f"./best_model_{i}/{args.model_name}/pytorch_model.bin")
-    parser.add_argument('--model_dir', type=str, default=f"./results/fold_{i}/checkpoint-2400/pytorch_model.bin")
+    if i==0:
+      parser.add_argument('--model_dir', type=str, default=f"./results/fold_{i}/checkpoint-1800/pytorch_model.bin")
+    elif i=1:
+      parser.add_argument('--model_dir', type=str, default=f"./results/fold_{i}/checkpoint-1800/pytorch_model.bin")
+    elif i=2:
+      parser.add_argument('--model_dir', type=str, default=f"./results/fold_{i}/checkpoint-1800/pytorch_model.bin")
+    elif i=3:
+      parser.add_argument('--model_dir', type=str, default=f"./results/fold_{i}/checkpoint-2400/pytorch_model.bin")
+    elif i=4:
+      parser.add_argument('--model_dir', type=str, default=f"./results/fold_{i}/checkpoint-1800/pytorch_model.bin")
+    elif i=5:
+      parser.add_argument('--model_dir', type=str, default=f"./results/fold_{i}/checkpoint-2400/pytorch_model.bin")
+    elif i=6:
+      parser.add_argument('--model_dir', type=str, default=f"./results/fold_{i}/checkpoint-1800/pytorch_model.bin")
+    elif i=7:
+      parser.add_argument('--model_dir', type=str, default=f"./results/fold_{i}/checkpoint-2400/pytorch_model.bin")
+    elif i=8:
+      parser.add_argument('--model_dir', type=str, default=f"./results/fold_{i}/checkpoint-2400/pytorch_model.bin")
+    elif i=9:
+      parser.add_argument('--model_dir', type=str, default=f"./results/fold_{i}/checkpoint-1800/pytorch_model.bin")
     parser.add_argument('--fold_num', type=int, default=i)
     parser.add_argument('--head_type', type=str,
                       default="more_dense")

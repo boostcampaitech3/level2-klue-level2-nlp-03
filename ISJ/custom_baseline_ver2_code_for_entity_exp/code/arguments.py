@@ -60,7 +60,7 @@ def get_args():
     # loss & optimizer
     # added by sykim; loss랑 OPtimizer는 라이브러리 안에 숨어있는 것 같아요. 혹시 몰라서 추가해뒀습니다.
     parser.add_argument("--loss_fn", type=str, default='base', help="name of loss")
-    parser.add_argument("--optimizer", type=str, default='adamw_hf', help="name of optimizer")
+    parser.add_argument("--optimizer", type=str, default='adafactor', help="name of optimizer")
 
     parser.add_argument("--gamma", type=float, default=1., help="name of loss")
     parser.add_argument("--smoothing", type=float, default=0.1, help="smoothing factor for label smoothing loss")

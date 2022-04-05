@@ -149,9 +149,11 @@ class Lite(LightningLite):
       for fold, (train_idx, val_idx) in enumerate(kfold.split(total_train_dataset, total_train_label)):
         
         print("fold : ", fold)
+        if fold <= 5:
+          continue
 
         #run= wandb.init(project= 'klue', entity= 'boostcamp-nlp3', name= f'KFOLD_{fold}_{args.wandb_path}')
-        
+        print("fold : ", fold)
         train_dataset= total_train_dataset.iloc[train_idx]
         val_dataset= total_train_dataset.iloc[val_idx]
         train_label = total_train_label.iloc[train_idx]
