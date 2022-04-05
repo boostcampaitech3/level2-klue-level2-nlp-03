@@ -312,7 +312,9 @@ def main():
     # 디버깅 때는 wandb 로깅 안하기 위해서
     if args.use_wandb:
         # TODO; 실험 이름 convention은 천천히 정해볼까요?
-        exp_full_name = f'{args.user_name}_{args.model_name}_{args.lr}_{args.optimizer}_{args.loss_fn}'
+        # if args.use_entity_embedding:
+        #     exp_name = args.exp_name
+        exp_full_name = f'{args.user_name}_{args.exp_name}_{args.model_name}_{args.lr}_{args.optimizer}_{args.loss_fn}'
         wandb.login()
 
         # project : 우리 그룹의 프로젝트 이름
