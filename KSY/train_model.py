@@ -52,33 +52,37 @@ args = get_args()
 args.train_data_dir = "/opt/ml/dataset/train/train.csv"
 seed_fix(args.seed)
 
-MODEL_NAME = 'klue/roberta-large'
+MODEL_NAME = 'klue/bert-base' # 'klue/roberta-large'
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 # added_token_num, tokenizer = add_special_token(tokenizer, args.entity_marker_type)
 # total_train_dataset = load_data(args.train_data_dir, args.augmentation, args.add_entity_marker, args.entity_marker_type, args.data_preprocessing)
 
 # breakpoint()
 
-train_dataset, eval_dataset = load_split_data(args.train_data_dir,
-                                                          args.seed,
-                                                          args.eval_ratio,
-                                                          augmentation='NO_AUG+IDX')
-train_label = label_to_num(train_dataset['label'].values)
-eval_label = label_to_num(eval_dataset['label'].values)
+# train_dataset, eval_dataset = load_split_data(args.train_data_dir,
+#                                                           args.seed,
+#                                                           args.eval_ratio,
+#                                                           augmentation='NO_AUG+IDX')
+# train_label = label_to_num(train_dataset['label'].values)
+# eval_label = label_to_num(eval_dataset['label'].values)
 
 # tokenized_train = tokenized_dataset(train_dataset, tokenizer)
 # tokenized_eval = tokenized_dataset(eval_dataset, tokenizer)
-tokenized_train = tokenized_dataset_IDX(train_dataset, tokenizer)
-tokenized_eval = tokenized_dataset_IDX(eval_dataset, tokenizer)
+
+# tokenized_train = tokenized_dataset_IDX(train_dataset, tokenizer)
+# tokenized_eval = tokenized_dataset_IDX(eval_dataset, tokenizer)
+
 # make dataset for pytorch.
 # RE_train_dataset = RE_Dataset(tokenized_train, train_label)
 # RE_eval_dataset = RE_Dataset(tokenized_eval, eval_label)
-RE_train_dataset = RE_Dataset_IDX(tokenized_train, train_label)
-breakpoint()
-RE_eval_dataset = RE_Dataset_IDX(tokenized_eval, eval_label)
+
+# RE_train_dataset = RE_Dataset_IDX(tokenized_train, train_label)
+# breakpoint()
+# RE_eval_dataset = RE_Dataset_IDX(tokenized_eval, eval_label)
+
 # RE_dev_dataset = RE_Dataset(tokenized_dev, dev_label)
 
-device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
+device = 'cpu' #torch.device(args.device if torch.cuda.is_available() else 'cpu')
 
 print(device)
 # setting model hyperparameter
@@ -89,6 +93,7 @@ model_config.num_labels = args.num_labels
 model_config.update({"head_type": 'more_dense'})
 model = customRobertaForSequenceClassification.from_pretrained(MODEL_NAME,
                                                                config  = model_config )
+breakpoint()
 # model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
 print(model.config)
 model.parameters

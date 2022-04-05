@@ -117,6 +117,7 @@ def preprocessing_dataset(dataset, augmentation='NO_AUG'):
         subj_idxs = []
         obj_idxs = []
         for subj, obj in zip(dataset['subject_entity'], dataset['object_entity']):
+            breakpoint()
             i = subj[1:-1].split(',')[0].split(':')[1]
             j = obj[1:-1].split(',')[0].split(':')[1]
 
@@ -411,12 +412,15 @@ def tokenized_dataset(dataset, tokenizer):
 def tokenized_dataset_IDX(dataset, tokenizer):
   """ tokenizer에 따라 sentence를 tokenizing 합니다."""
   concat_entity = []
-
-  for e01, e02 in zip(dataset['subject_entity'], dataset['object_entity']):
+  subj_idxs = []
+  obj_idxs = []
+  # 이렇게 안넣으면 indexing 망가짐
+  for e01, e02,subj_idx,obj_idx in zip(dataset['subject_entity'], dataset['object_entity'],dataset['subj_idxs'],dataset['obj_idxs']):
     temp = ''
     temp = e01 + '[SEP]' + e02
     concat_entity.append(temp)
-
+    subj_idxs.append(subj_idx)
+    obj_idxs.append(obj_idx)
   tokenized_sentences = tokenizer(
       concat_entity,
       list(dataset['sentence']),
@@ -427,8 +431,8 @@ def tokenized_dataset_IDX(dataset, tokenizer):
       add_special_tokens=True,
       )
   breakpoint()
-  tokenized_sentences.update({'subj_idxs': dataset['subj_idxs']})
-  tokenized_sentences.update({'obj_idxs': dataset['obj_idxs']})
+  tokenized_sentences.update({'subj_idxs': subj_idxs})
+  tokenized_sentences.update({'obj_idxs': obj_idxs})
 
   return tokenized_sentences
 
