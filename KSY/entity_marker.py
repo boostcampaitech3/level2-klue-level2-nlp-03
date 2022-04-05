@@ -1,4 +1,6 @@
 import pandas as pd
+import re
+from tqdm import tqdm
 
 
 # added by sujeong;
@@ -12,27 +14,23 @@ def add_special_token(tokenizer, marker_type):
         added_token_num = tokenizer.add_special_tokens({"additional_special_tokens": markers})
 
     elif marker_type == "entity_marker_punc":  # --> @ Bill @ was born in # Seattle #.
-        markers = ["@", "#"]
-        added_token_num = tokenizer.add_special_tokens({"additional_special_tokens": markers})
+        added_token_num = 0
+        # markers = ["@", "#"]
+        # added_token_num = tokenizer.add_special_tokens({"additional_special_tokens": markers})
 
     elif marker_type == "typed_entity_marker":  # --> <S:PERSON> Bill </S:PERSON> was born in <O:CITY> Seattle </O:CITY>
         entity_types = ['PER', 'ORG', 'POH', 'DAT', 'LOC', 'NOH']
         markers = []
         for word_type in entity_types:
-            sub_obj.append(f'<S:{word_type}>')
-            sub_obj.append(f'</S:{word_type}>')
-            sub_obj.append(f'<O:{word_type}>')
-            sub_obj.append(f'</O:{word_type}>')
+            markers.append(f'<S:{word_type}>')
+            markers.append(f'</S:{word_type}>')
+            markers.append(f'<O:{word_type}>')
+            markers.append(f'</O:{word_type}>')
         added_token_num = tokenizer.add_special_tokens({"additional_special_tokens": markers})
 
     elif marker_type == "typed_entity_marker_punc":  # --> @ +person+ Bill @ was born in #^city^ Seattle #.
         entity_types = ['PER', 'ORG', 'POH', 'DAT', 'LOC', 'NOH']
-        markers = []
-        for word_type in entity_types:
-            sub_obj.append(f'@+{word_type}+')
-            sub_obj.append(f'#^{word_type}^')
-        sub_obj.append('@')
-        sub_obj.append('#')
+        markers = entity_types
         added_token_num = tokenizer.add_special_tokens({"additional_special_tokens": markers})
     print('Done!')
     return added_token_num, tokenizer
@@ -46,41 +44,46 @@ def entity_marking(entity: str, is_subj: bool,
     marked_word = ''
     if marker_type == "entity_marker":  # --> [E1] Bill [/E1] was born in [E2] Seattle [/E2].
         if is_subj:
-            marked_word = '[E1]' + word + '[/E1]'
+            marked_word = ' [E1] ' + word + ' [/E1] '
         else:
-            marked_word = '[E2]' + word + '[/E2]'
+            marked_word = ' [E2] ' + word + ' [/E2] '
 
     elif marker_type == "entity_marker_punc":  # --> @ Bill @ was born in # Seattle #.
         if is_subj:
-            marked_word = '@' + word + '@'
+            marked_word = ' @ ' + word + ' @ '
         else:
-            marked_word = '#' + word + '#'
+            marked_word = ' # ' + word + ' # '
 
     elif marker_type == "typed_entity_marker":  # --> <S:PERSON> Bill </S:PERSON> was born in <O:CITY> Seattle </O:CITY>
         if is_subj:
-            marked_word = f'<S:{word_type}>' + word + f'</S:{word_type}>'
+            marked_word = f' <S:{word_type}> ' + word + f' </S:{word_type}> '
         else:
-            marked_word = f'<O:{word_type}>' + word + f'</O:{word_type}>'
+            marked_word = f' <O:{word_type}> ' + word + f' </O:{word_type}> '
 
     elif marker_type == "typed_entity_marker_punc":  # --> @ +person+ Bill @ was born in #^city^ Seattle #.
         if is_subj:
-            marked_word = f'@+{word_type}+' + word + '@'
+            marked_word = f' @ + {word_type} + ' + word + ' @ '
         else:
-            marked_word = f'#^{word_type}^' + word + '#'
+            marked_word = f' # ^ {word_type} ^ ' + word + ' # '
     return marked_word
 
 
 # added by sujeong;
 def get_entity_marked_data(df: pd.DataFrame, marker_type: str):
     print('Add Entity Marker to Data...')
+    # print('Marker_type:', marker_type)
     assert marker_type in ["entity_marker", "entity_marker_punc", "typed_entity_marker",
                            "typed_entity_marker_punc"], "marker type을 확인하세요."
 
     df_entity_marked = pd.DataFrame(columns=['id', 'sentence', 'subject_entity', 'object_entity', 'label', 'source'])
 
-    for i, data in enumerate(df.iloc):
+    for i, data in tqdm(enumerate(df.iloc), total=len(df)):
         data_dict = dict(data)
-        i_d, sentence, subj, obj, label, source = data_dict.values()
+        i_d, sentence, subj, obj, label, source = data_dict['id'], data_dict['sentence'], data_dict['subject_entity'], \
+                                                  data_dict['object_entity'], data_dict['label'], data_dict['source']
+
+        subj = re.sub(r"\'{2,}", r"'", subj)
+        obj = re.sub(r"\'{2,}", r"'", obj)
         subj_word, subj_start, subj_end, subj_type = eval(subj).values()
         obj_word, obj_start, obj_end, obj_type = eval(obj).values()
 
@@ -90,16 +93,37 @@ def get_entity_marked_data(df: pd.DataFrame, marker_type: str):
         # marker_type = marker_types[marker_type_num-1] # marker type num 바꾸면 이 부분이 바뀐다.
 
         # 2. Entity 찾기
+        # print(i)
+        # print(subj_word, obj_word)
+        # print(obj_word, type(obj_start), type(obj_end), type(obj_type))
+        if i < 20:
+            print(sentence)
+            print(obj_word, subj_word)
         if subj_word != sentence[subj_start: subj_end + 1]:
+            re_subj_word = subj_word
+            if re.search(r"[\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]", subj_word):
+                finds = re.finditer(r"[\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]", subj_word)
+                i = 0
+                for f in finds:
+                    re_subj_word = re_subj_word[:f.start() + i] + "\\" + re_subj_word[f.start() + i:]
+                    i += 1
+
             '''(똑같은 단어들 중 원래 idx와 가장 가까이 있는 애를 진짜 entity라고 생각)'''
-            candidates = re.finditer(subj_word, sentence)
+            candidates = re.finditer(re_subj_word, sentence)
             closest_one = min(candidates, key=lambda x: abs(x.start() - subj_start) + abs(x.end() - (subj_end + 1)))
             subj_start, subj_end = closest_one.start(), closest_one.end() - 1
 
         # 3. Entity 찾기
         if obj_word != sentence[obj_start: obj_end + 1]:
             '''(똑같은 단어들 중 원래 idx와 가장 가까이 있는 애를 진짜 entity라고 생각)'''
-            candidates = re.finditer(obj_word, sentence)
+            re_obj_word = obj_word
+            if re.search(r"[\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]", obj_word):
+                finds = re.finditer(r"[\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]", obj_word)
+                i = 0
+                for f in finds:
+                    re_obj_word = re_obj_word[:f.start() + i] + "\\" + re_obj_word[f.start() + i:]
+                    i += 1
+            candidates = re.finditer(re_obj_word, sentence)
             closest_one = min(candidates, key=lambda x: abs(x.start() - obj_start) + abs(x.end() - (obj_end + 1)))
             obj_start, obj_end = closest_one.start(), closest_one.end() - 1
 
@@ -116,8 +140,10 @@ def get_entity_marked_data(df: pd.DataFrame, marker_type: str):
                        + sentence[obj_end + 1:subj_start] \
                        + entity_marking(entity=subj, is_subj=True, marker_type=marker_type) \
                        + sentence[subj_end + 1:]
-
+        if i < 20:
+            print(sentence)
         # 5. 가공한 데이터 추가
         df_entity_marked.loc[i] = [i_d, sentence, subj, obj, label, source]
+
     print('Done!')
     return df_entity_marked
