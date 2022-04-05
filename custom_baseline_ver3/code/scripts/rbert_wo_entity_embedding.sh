@@ -1,0 +1,19 @@
+python kfold_train_test_rbert.py --data_preprocessing True \
+                    --add_entity_marker True \
+                    --entity_marker_type entity_marker_punc \
+                    --head_type more_dense \
+                    --lr 2e-5 \
+                    --use_wandb True \
+                    --user_name KSY \
+                    --eval_steps 1 \
+                    --save_steps 1 \
+                    --save_total_limit 4 \
+                    --train_bs 64 \
+                    --eval_bs 256 \
+                    --head_type more_dense \
+                    --loss_fn labelsmoothingloss \
+                    --smoothing 0.2 \
+                    --epochs 8 \
+                    --exp_name rbert_wo_entity_embedding \
+                    --use_entity_embedding False \
+                    --train_data_dir /opt/ml/dataset/train/train.csv
