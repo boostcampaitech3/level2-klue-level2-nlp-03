@@ -39,6 +39,30 @@ class RE_Dataset(torch.utils.data.Dataset):
   def __len__(self):
     return len(self.labels)
 
+class RE_Dataset_IDX(torch.utils.data.Dataset):
+  """ Dataset 구성을 위한 class."""
+  def __init__(self, pair_dataset, labels):
+    self.pair_dataset = pair_dataset
+    self.labels = labels
+
+  def __getitem__(self, idx):
+    item = {}
+    for key, val in self.pair_dataset.items():
+        if key =='subj_idxs':
+            item.update({'subj_start':val[idx][0]})
+            item.update({'subj_end': val[idx][1]})
+        elif key =='obj_idxs':
+            item.update({'obj_start':val[idx][0]})
+            item.update({'obj_end': val[idx][1]})
+        else:
+            item.update({key: val[idx].clone().detach()})
+    # item = {key: val[idx].clone().detach() for key, val in self.pair_dataset.items()}
+    item['labels'] = torch.tensor(self.labels[idx])
+    return item
+
+  def __len__(self):
+    return len(self.labels)
+
 # eunki + sujeong;
 def preprocessing_dataset(dataset, augmentation='NO_AUG'):
     """ 처음 불러온 csv 파일을 원하는 형태의 DataFrame으로 변경 시켜줍니다."""
@@ -87,10 +111,29 @@ def preprocessing_dataset(dataset, augmentation='NO_AUG'):
         out_dataset = pd.concat([out_dataset_source, out_dataset_aug])
 
         return out_dataset
+    elif augmentation=='NO_AUG+IDX':
+        subject_entity = []
+        object_entity = []
+        subj_idxs = []
+        obj_idxs = []
+        for subj, obj in zip(dataset['subject_entity'], dataset['object_entity']):
+            i = subj[1:-1].split(',')[0].split(':')[1]
+            j = obj[1:-1].split(',')[0].split(':')[1]
+
+            subj_idxs.append([eval(subj)['start_idx'], eval(subj)['end_idx']])
+            obj_idxs.append([eval(obj)['start_idx'], eval(obj)['end_idx']])
+            subject_entity.append(i)
+            object_entity.append(j)
+        out_dataset = pd.DataFrame(
+            {'id': dataset['id'], 'sentence': dataset['sentence'], 'subject_entity': subject_entity,
+             'object_entity': object_entity, 'label': dataset['label'],
+             'subj_idxs':subj_idxs , 'obj_idxs':obj_idxs})
+        return out_dataset
 
     else:  # default = "NO_AUG"
         subject_entity = []
         object_entity = []
+
         for i, j in zip(dataset['subject_entity'], dataset['object_entity']):
             i = i[1:-1].split(',')[0].split(':')[1]
             j = j[1:-1].split(',')[0].split(':')[1]
@@ -236,7 +279,7 @@ def load_split_eunki_data(dataset_dir, sedd=42, eval_ratio=0.2):
     val_label_list = val_label['label'].values.tolist()
     return train_dataset, val_dataset, train_label_list, val_label_list
 
-def load_split_data(dataset_dir, seed=42, eval_ratio=0.2):
+def load_split_data(dataset_dir, seed=42, eval_ratio=0.2,augmentation='NO_AUG'):
     """ csv 파일을 경로에 맡게 불러오고,
     duplicated cls를 고려하지 않고  train, eval에 맞게 분리해줍니다
     """
@@ -247,8 +290,8 @@ def load_split_data(dataset_dir, seed=42, eval_ratio=0.2):
                                            stratify=label,
                                            random_state=seed)
 
-    train_dataset = preprocessing_dataset(pd_train)
-    eval_dataset = preprocessing_dataset(pd_eval)
+    train_dataset = preprocessing_dataset(pd_train,augmentation=augmentation)
+    eval_dataset = preprocessing_dataset(pd_eval,augmentation=augmentation)
 
     return train_dataset, eval_dataset
 
@@ -315,6 +358,13 @@ def load_data_base(dataset_dir):
   return dataset
 
 
+def load_data_base_test(dataset_dir):
+    """ csv 파일을 경로에 맡게 불러 옵니다. """
+    pd_dataset = pd.read_csv(dataset_dir)
+    dataset = preprocessing_dataset(pd_dataset,augmentation='NO_AUG+IDX')
+
+    return dataset
+
 def load_data(dataset_dir, augmentation, add_entity_marker, entity_marker_type, data_preprocessing):
     """ csv 파일을 경로에 맡게 불러 옵니다. """
     pd_dataset = pd.read_csv(dataset_dir)
@@ -355,6 +405,31 @@ def tokenized_dataset(dataset, tokenizer):
       max_length=256,
       add_special_tokens=True,
       )
+
+  return tokenized_sentences
+
+def tokenized_dataset_IDX(dataset, tokenizer):
+  """ tokenizer에 따라 sentence를 tokenizing 합니다."""
+  concat_entity = []
+
+  for e01, e02 in zip(dataset['subject_entity'], dataset['object_entity']):
+    temp = ''
+    temp = e01 + '[SEP]' + e02
+    concat_entity.append(temp)
+
+  tokenized_sentences = tokenizer(
+      concat_entity,
+      list(dataset['sentence']),
+      return_tensors="pt",
+      padding=True,
+      truncation=True,
+      max_length=256,
+      add_special_tokens=True,
+      )
+  breakpoint()
+  tokenized_sentences.update({'subj_idxs': dataset['subj_idxs']})
+  tokenized_sentences.update({'obj_idxs': dataset['obj_idxs']})
+
   return tokenized_sentences
 
 def get_cls_list(pd_dataset):
@@ -365,20 +440,24 @@ def get_cls_list(pd_dataset):
 
 if __name__ == '__main__':
     from transformers import AutoTokenizer
-    data_dir = "../baseline/dataset/train/train.csv"
+    data_dir = "/opt/ml/dataset/train/train.csv"
     MODEL_NAME = "klue/bert-base"
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
-    train_dataset, val_dataset = load_split_data(data_dir)
+    # train_dataset, val_dataset = load_split_data(data_dir)
+    train_dataset, val_dataset = load_split_data(data_dir,augmentation='NO_AUG+IDX')
+
     labels = label_to_num(train_dataset['label'])
     # eunki
     # train_dataset, val_dataset, train_label_list, val_label_list = load_split_data(data_dir)
 
     # tokenizing dataset
-    tokenized_train = tokenized_dataset(train_dataset, tokenizer)
+    tokenized_train= tokenized_dataset_IDX(train_dataset, tokenizer)
     tokenized_eval = tokenized_dataset(val_dataset, tokenizer)
     # tokenized_dev = tokenized_dataset(dev_dataset, tokenizer)
 
     # make dataset for pytorch.
-    RE_train_dataset = RE_Dataset(tokenized_train, train_label_list)
+    # RE_train_dataset = RE_Dataset(tokenized_train, train_label_list)
+    RE_train_dataset = RE_Dataset_IDX(tokenized_train, labels)
+    breakpoint()
     RE_eval_dataset = RE_Dataset(tokenized_eval, val_label_list)

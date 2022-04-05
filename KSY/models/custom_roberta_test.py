@@ -371,7 +371,7 @@ class customRobertaModel(RobertaPreTrainedModel):
             `past_key_values`).
         """
         print('inside the model')
-        breakpoint()
+        # breakpoint()
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
@@ -431,7 +431,7 @@ class customRobertaModel(RobertaPreTrainedModel):
         # and head_mask is converted to shape [num_hidden_layers x batch x num_heads x seq_length x seq_length]
         head_mask = self.get_head_mask(head_mask, self.config.num_hidden_layers)
         print('head masking')
-        breakpoint()
+
         embedding_output = self.embeddings(
             input_ids=input_ids,
             position_ids=position_ids,
@@ -440,7 +440,7 @@ class customRobertaModel(RobertaPreTrainedModel):
             past_key_values_length=past_key_values_length,
         )
         print('embedding')
-        breakpoint()
+
         encoder_outputs = self.encoder(
             embedding_output,
             attention_mask=extended_attention_mask,
@@ -489,6 +489,7 @@ class RobertaClassificationHead(nn.Module):
 
     def forward(self, features, avg = False, **kwargs):
         # avg or use cls token
+        breakpoint()
         if avg:
             x = torch.mean(features,dim=1)
         else:
@@ -720,7 +721,7 @@ if __name__=='__main__':
     # breakpoint()
     # model = RobertaModel(conf)
     model =customRobertaForSequenceClassification(conf)
-    breakpoint()
+
     # model = RobertaForSequenceClassification(conf)
 
     print(model)
