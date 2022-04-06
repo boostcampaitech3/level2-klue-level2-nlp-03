@@ -172,9 +172,9 @@ class Lite(LightningLite):
         for fold, (train_idx, val_idx) in enumerate(kfold.split(total_train_dataset, total_train_label)):
 
             print("fold : ", fold)
-            if fold!= 0:
-                # 검증용으로 1개의 폴드만 수행
-                break
+            # if fold!= 0:
+            #     # 검증용으로 1개의 폴드만 수행
+            #     break
             # run= wandb.init(project= 'klue', entity= 'boostcamp-nlp3', name= f'KFOLD_{fold}_{args.wandb_path}')
 
             train_dataset = total_train_dataset.iloc[train_idx]
@@ -265,7 +265,7 @@ class Lite(LightningLite):
                 train_dataset=RE_train_dataset,  # training dataset
                 eval_dataset=RE_dev_dataset,  # evaluation dataset
                 compute_metrics=compute_metrics,  # define metrics function
-                callbacks=[customWandbCallback()],  # EarlyStoppingCallback(early_stopping_patience= 3)],
+                callbacks=[customWandbCallback(),EarlyStoppingCallback(early_stopping_patience= 9)],  # EarlyStoppingCallback(early_stopping_patience= 3)],
                 cls_list=cls_list,
                 add_args=args
             )
@@ -314,16 +314,19 @@ def main():
         # TODO; 실험 이름 convention은 천천히 정해볼까요?
         # if args.use_entity_embedding:
         #     exp_name = args.exp_name
-        exp_full_name = f'{args.user_name}_{args.exp_name}_{args.model_name}_{args.lr}_{args.optimizer}_{args.loss_fn}'
+        exp_full_name = f'{args.user_name}_{args.exp_name}(train.csv)_{args.model_name}_{args.lr}_{args.optimizer}_{args.loss_fn}'
         wandb.login()
 
         # project : 우리 그룹의 프로젝트 이름
         # name : 저장되는 실험 이름
         # entity : 우리 그룹/팀 이름
 
-        wandb.init(project='KLUE',  # args.user_name,
+        # wandb.init(project='KLUE',  # args.user_name,
+        #            name=exp_full_name,
+        #            entity='kimcando')
+        wandb.init(project='Final',  # args.user_name,
                    name=exp_full_name,
-                   entity='kimcando')
+                   entity='boostcamp-nlp3')
         # entity='boostcamp-nlp3')  # nlp-03
         wandb.config.update(args)
 

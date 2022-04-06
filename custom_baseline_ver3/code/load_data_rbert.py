@@ -157,7 +157,7 @@ def load_data(dataset_dir, augmentation, add_entity_marker, entity_marker_type, 
     print("entity_marker_type: ", entity_marker_type)
     if add_entity_marker:
         pd_dataset = get_entity_marked_data(df=pd_dataset, marker_type=entity_marker_type)
-    breakpoint()
+    # breakpoint()
 
     # 데이터 전처리 (중복 괄호 제거, 이상한 문장 부호 수정, 연속된 공백 수정)
     # added by sujeong;
@@ -167,9 +167,39 @@ def load_data(dataset_dir, augmentation, add_entity_marker, entity_marker_type, 
 
     # 데이터셋으로 제작
     dataset = preprocessing_dataset(pd_dataset, augmentation)
-    breakpoint()
+    # breakpoint()
     return dataset
 
+
+def load_test_dataset(dataset_dir, tokenizer,
+                      add_entity_marker, entity_marker_type, data_preprocessing,
+                      augmentation='NO_AUG'):
+    """ csv 파일을 경로에 맡게 불러 옵니다. """
+    pd_dataset = pd.read_csv(dataset_dir)
+
+    # 중복 데이터 제거를 위한 전처리
+    pd_dataset = preprocess(pd_dataset)
+
+    # entity marker 추가
+    # added by sujeong;
+    print("add_entity_marker : ", add_entity_marker)
+    print("entity_marker_type: ", entity_marker_type)
+    if add_entity_marker:
+        pd_dataset = get_entity_marked_data(df=pd_dataset, marker_type=entity_marker_type)
+    # breakpoint()
+
+    # 데이터 전처리 (중복 괄호 제거, 이상한 문장 부호 수정, 연속된 공백 수정)
+    # added by sujeong;
+    print("data_preprocessing : ", data_preprocessing)
+    if data_preprocessing:
+        run_preprocess(pd_dataset)
+
+    # 데이터셋으로 제작
+    test_dataset = preprocessing_dataset(pd_dataset, augmentation)
+    test_label = list(map(int,test_dataset['label'].values))
+    tokenized_test = tokenized_dataset(test_dataset, tokenizer)
+    # breakpoint()
+    return test_dataset['id'], tokenized_test, test_label
 
 def tokenized_dataset(dataset, tokenizer):
     """ tokenizer에 따라 sentence를 tokenizing 합니다."""
