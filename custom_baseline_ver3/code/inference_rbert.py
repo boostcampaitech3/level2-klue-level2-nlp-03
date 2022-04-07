@@ -33,7 +33,9 @@ def inference(model, tokenized_sent, device):
             outputs = model(
                 input_ids=data['input_ids'].to(device),
                 attention_mask=data['attention_mask'].to(device),
-                token_type_ids=data['token_type_ids'].to(device)
+                token_type_ids=data['token_type_ids'].to(device),
+                e1_mask = data['e1_mask'].to(device),
+                e2_mask = data['e2_mask'].to(device)
             )
         logits = outputs[0]
         prob = F.softmax(logits, dim=-1).detach().cpu().numpy()
@@ -87,6 +89,8 @@ def main(args):
     model_config = AutoConfig.from_pretrained(Tokenizer_NAME)
     model_config.update({"head_type": args.head_type})
     model_config.num_labels = 30
+    model_config.update({"use_entity_embedding": args.use_entity_embedding})
+    model_config.update({"entity_emb_size": 2})
     if args.add_entity_marker:  # added by sujeong; if entity marker==True, add special token.
         model_config.vocab_size += added_token_num
     ## load my model
@@ -97,6 +101,7 @@ def main(args):
         # 아예 hugging face 지원 구조
         model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
     else:
+        print('RBERT!!')
         model = customRBERTForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
 
     best_state_dict = torch.load(args.model_dir)
@@ -149,7 +154,7 @@ def str2bool(v):
 
 if __name__ == '__main__':
     # model dir
-    for i in range(5):
+    for i in range(2):
         parser = argparse.ArgumentParser()
         parser.add_argument("--model_name", type=str, default="roberta-large")
         # entity_marker
@@ -168,11 +173,20 @@ if __name__ == '__main__':
                             help="If you want to make data preprocessed, set this argument True.")
 
         args = parser.parse_args()
-        parser.add_argument('--model_dir', type=str, default=f"./best_model_{i}/{args.model_name}/pytorch_model.bin")
-        # parser.add_argument('--model_dir', type=str, default=f"./results/fold_{i}/checkpoint-2100/pytorch_model.bin")
+        # parser.add_argument('--model_dir', type=str, default=f"./best_model_{i}/{args.model_name}/pytorch_model.bin")
+        if i ==0 or i== 2:
+            turn = 2700
+        elif i==1 or i==3:
+            turn = 3300
+        else:
+            turn = 3600
+        parser.add_argument('--model_dir', type=str, default=f"./results_with_embedding/fold_{i}/checkpoint-{turn}/pytorch_model.bin")
         parser.add_argument('--fold_num', type=int, default=i)
         parser.add_argument('--head_type', type=str,
-                            default="modifiedBiLSTM")
+                            default="double_more_dense")
+        parser.add_argument("--use_entity_embedding", type=str2bool, default=True,
+                            help="whether to use entity embedding or not",
+                            )
         args = parser.parse_args()
         print(args)
         main(args)
