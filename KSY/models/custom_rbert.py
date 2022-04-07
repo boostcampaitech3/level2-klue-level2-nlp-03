@@ -1,3 +1,5 @@
+# 주요 사용 클래스 :customRBERTForSequenceClassification
+
 import math
 from typing import List, Optional, Tuple, Union
 

@@ -144,20 +144,14 @@ class Lite(LightningLite):
         if args.add_entity_marker:
             added_token_num, tokenizer = add_special_token(tokenizer, args.entity_marker_type)
 
-            # load dataset
-        # augmentation 인자를 전달
         # edited by sujeong;(args.add_entity_marker, args.entity_marker_type, args.data_preprocessing 추가)
         print('Loading Data...')
-        """
-        # entity typing +RBERT 확인을 위한 train.csv 버전으로 load_data 수행한 파일 -> 노션에 업로드해둠
-        # edited by soyeon;(entity type2 + run preprocess 돌린 csv 파일 생성했기 때문에 해당 부분 불러오도록 함) 만약 다른 설정으로 할 경우 수행해야함(약 20분 소요)
-        total_train_dataset = load_data(args.train_data_dir, args.augmentation, args.add_entity_marker, args.entity_marker_type, args.data_preprocessing)
-        """
-        # 요 밑에껄로 해보기 -> 해당 파일은 e1_mask, e2_mask 반환이 안됨
-        # total_train_dataset = pd.read_csv('/opt/ml/dataset/train/final_preprocess_entity_marker2.csv')
+
+        # RBERT의 load_data 메커니즘이 다름!
+        # load_data 함수가 불러오는 파일은 load_data_rbert.py
         total_train_dataset = load_data(args.train_data_dir, args.augmentation, args.add_entity_marker,
                                         args.entity_marker_type, args.data_preprocessing)
-        # total_train_dataset = pd.read_csv('/opt/ml/tests/level2-klue-level2-nlp-03/KSY/final_train_entity_marker2.csv')
+
         print('Done!')
 
         # 먼저 중복여부 판별을 위한 코드
@@ -166,8 +160,6 @@ class Lite(LightningLite):
         result = label_to_num(total_train_dataset['label'].values)
         total_train_label = pd.DataFrame(data=result, columns=['label'])
 
-        # dev_dataset = load_data("../dataset/train/dev.csv") # validation용 데이터는 따로 만드셔야 합니다.
-        # dev_label = label_to_num(dev_dataset['label'].values)
 
         kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
@@ -175,10 +167,6 @@ class Lite(LightningLite):
         for fold, (train_idx, val_idx) in enumerate(kfold.split(total_train_dataset, total_train_label)):
 
             print("fold : ", fold)
-            # if fold!= 0:
-            #     # 검증용으로 1개의 폴드만 수행
-            #     break
-            # run= wandb.init(project= 'klue', entity= 'boostcamp-nlp3', name= f'KFOLD_{fold}_{args.wandb_path}')
 
             train_dataset = total_train_dataset.iloc[train_idx]
             val_dataset = total_train_dataset.iloc[val_idx]
@@ -273,14 +261,6 @@ class Lite(LightningLite):
                 add_args=args
             )
 
-            # trainer = Trainer(
-            #     model=model,  # the instantiated 🤗 Transformers model to be trained
-            #     args=training_args,  # training arguments, defined above
-            #     train_dataset=RE_train_dataset,  # training dataset
-            #     eval_dataset=RE_dev_dataset,  # evaluation dataset
-            #     compute_metrics=compute_metrics,  # define metrics function
-            #     callbacks= [EarlyStoppingCallback(early_stopping_patience= 3)]
-            # )
 
             # train model
             trainer.train()
@@ -324,9 +304,6 @@ def main():
         # name : 저장되는 실험 이름
         # entity : 우리 그룹/팀 이름
 
-        # wandb.init(project='KLUE',  # args.user_name,
-        #            name=exp_full_name,
-        #            entity='kimcando')
         wandb.init(project='Final',  # args.user_name,
                    name=exp_full_name,
                    entity='boostcamp-nlp3')

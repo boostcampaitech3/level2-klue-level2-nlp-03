@@ -10,19 +10,16 @@ from transformers import AutoTokenizer, AutoConfig, EarlyStoppingCallback, AutoM
 
 from load_data import *
 from loss import *
-# added by sujeong;
+
 from entity_marker import *
 from utils import *
 
 from custom.callback import customWandbCallback
-    #customTrainerState,customTrainerControl,customTrainerCallback
-
 from custom.trainer import customTrainer,customTrainer2
 from models.custom_roberta import customRobertaForSequenceClassification
 
 import warnings
 warnings.filterwarnings('ignore')
-
 
 from transformers import (
     AutoTokenizer,
@@ -104,6 +101,9 @@ def compute_metrics(pred):
   }
 
 def label_to_num(label):
+  """
+  딕셔너리에 저장된 string label을 모델에 넘겨주기 위한 number로 변환
+  """
   num_label = []
   with open('./dict_label_to_num.pkl', 'rb') as f:
     dict_label_to_num = pickle.load(f)
@@ -114,39 +114,42 @@ def label_to_num(label):
 
 
 class Lite(LightningLite):
-
+    """
+    fp16 사용을 위해 pytorch lightening 적용
+    -> huggingface integration에서 지원해주는 fp16 사용을 위해
+    TrainingArugments에 fp16=True 입력 추가 필요.
+    """
   def run(self, args,exp_full_name,reports='wandb'):
+
       # load model and tokenizer
-      # MODEL_NAME = "bert-base-uncased"
       MODEL_NAME = args.model_name
       tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
       
       # add special tokens
-      # added by sujeong; if entity marker==True, add special token.
+      # if entity marker==True, add special token.
       if args.add_entity_marker: 
         added_token_num, tokenizer = add_special_token(tokenizer, args.entity_marker_type) 
 
       # load dataset
-      # augmentation 인자를 전달
-      # edited by sujeong;(args.add_entity_marker, args.entity_marker_type, args.data_preprocessing 추가)
+      # args.add_entity_marker, args.entity_marker_type, args.data_preprocessing 추가
       print('Loading Data...')
-      """
-      # edited vy soyeon;(entity type2 + run preprocess 돌린 csv 파일 생성했기 때문에 해당 부분 불러오도록 함) 만약 다른 설정으로 할 경우 수행해야함(약 20분 소요)
+
+      # augmentation, entity marker, {subj, obj, sentence} 중복 제거를 위한 preprocessing
       total_train_dataset = load_data(args.train_data_dir, args.augmentation, args.add_entity_marker, args.entity_marker_type, args.data_preprocessing)
-      """
+
+      # 팀 내부 사용 시 entity type2 + run preprocess 돌린 csv 파일 생성했기 때문에 해당 부분 불러오도록 함 -> 만약 다른 설정으로 할 경우 수행해야함(약 20분 소요)
       # total_train_dataset = pd.read_csv('/opt/ml/dataset/train/final_preprocess_entity_marker2.csv')
-      total_train_dataset = pd.read_csv('/opt/ml/tests/level2-klue-level2-nlp-03/KSY/final_train_entity_marker2.csv')
+      # total_train_dataset = pd.read_csv('/opt/ml/tests/level2-klue-level2-nlp-03/KSY/final_train_entity_marker2.csv')
       print('Done!')
 
-      # 먼저 중복여부 판별을 위한 코드
+      # 중복여부 판별을 위한 코드 -> 향후 preprocess에 적용
       total_train_dataset['is_duplicated'] = total_train_dataset['sentence'].duplicated(keep=False)
       
       result = label_to_num(total_train_dataset['label'].values)
       total_train_label = pd.DataFrame(data = result, columns = ['label'])
 
-      # dev_dataset = load_data("../dataset/train/dev.csv") # validation용 데이터는 따로 만드셔야 합니다.
-      # dev_label = label_to_num(dev_dataset['label'].values)
-      
+      # StratifiedKFold 적용
+      # KFold 적용 -> kfold_train_test_2.py 참고
       kfold= StratifiedKFold(n_splits=5, shuffle= True, random_state= 42)
       
       print('Start Training...')
@@ -154,8 +157,6 @@ class Lite(LightningLite):
         
         print("fold : ", fold)
 
-        #run= wandb.init(project= 'klue', entity= 'boostcamp-nlp3', name= f'KFOLD_{fold}_{args.wandb_path}')
-        
         train_dataset= total_train_dataset.iloc[train_idx]
         val_dataset= total_train_dataset.iloc[val_idx]
         train_label = total_train_label.iloc[train_idx]
@@ -166,8 +167,8 @@ class Lite(LightningLite):
         train_label.reset_index(drop= True, inplace= True)
         val_label.reset_index(drop= True, inplace= True)
         
-        temp = []    
-        
+        temp = []
+        # EDA 결과 동일한 sentence에 다른 subj, obj 존재 -> 그런 문장은 training / validation에 몰아주기를 위한 처리
         for val_idx in val_dataset.index:
             if val_dataset['is_duplicated'].iloc[val_idx] == True:
                 if val_dataset['sentence'].iloc[val_idx] in train_dataset['sentence'].values:
@@ -191,10 +192,10 @@ class Lite(LightningLite):
 
         device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
 
-
         model_config = AutoConfig.from_pretrained(MODEL_NAME)
         model_config.num_labels = args.num_labels
         model_config.update({"head_type": args.head_type})
+
         model = customRobertaForSequenceClassification.from_pretrained(MODEL_NAME, config  = model_config )
         if args.add_entity_marker:
           model.resize_token_embeddings(tokenizer.vocab_size + added_token_num)
@@ -202,8 +203,7 @@ class Lite(LightningLite):
 
         # 사용한 option 외에도 다양한 option들이 있습니다.
         # https://huggingface.co/transformers/main_classes/trainer.html#trainingarguments 참고해주세요.
-        
-        
+
         output_dir = args.output_dir + f'/fold_{fold}'
         training_args = TrainingArguments(
             output_dir=output_dir,  # output directory
@@ -233,6 +233,7 @@ class Lite(LightningLite):
             run_name = exp_full_name,
         )
 
+        # Focal, ldam loss 를 위한 class distribution list 생성
         cls_list = get_cls_list(train_dataset)
 
         trainer = customTrainer2(
@@ -246,15 +247,6 @@ class Lite(LightningLite):
         add_args = args
         )
 
-        # trainer = Trainer(
-        #     model=model,  # the instantiated 🤗 Transformers model to be trained
-        #     args=training_args,  # training arguments, defined above
-        #     train_dataset=RE_train_dataset,  # training dataset
-        #     eval_dataset=RE_dev_dataset,  # evaluation dataset
-        #     compute_metrics=compute_metrics,  # define metrics function
-        #     callbacks= [EarlyStoppingCallback(early_stopping_patience= 3)]
-        # )
-
         # train model
         trainer.train()
         #model.save_pretrained(args.model_save_dir)
@@ -263,8 +255,7 @@ class Lite(LightningLite):
             os.makedirs(f'{args.model_save_dir}_{fold}/{folder_name}', exist_ok= True)
         torch.save(model.state_dict(), os.path.join(f'{args.model_save_dir}_{fold}/{folder_name}', 'pytorch_model.bin'))
         print(f'{MODEL_NAME} version, fold{fold} fin!')
-        
-        
+
         #run.finish()
 
 def make_dirs(args):

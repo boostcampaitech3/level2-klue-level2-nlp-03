@@ -7,7 +7,6 @@ import math
 import numpy as np
 
 # https://github.com/kaidic/LDAM-DRW
-
 def get_loss(args, cls_num_list):
     if args.loss_fn =='focalloss':
         # reweight
@@ -59,7 +58,6 @@ class FocalLoss(nn.Module):
 
 
 class LDAMLoss(nn.Module):
-
     def __init__(self, cls_num_list, max_m=0.5, weight=None, s=30):
         super(LDAMLoss, self).__init__()
         m_list = 1.0 / np.sqrt(np.sqrt(cls_num_list))

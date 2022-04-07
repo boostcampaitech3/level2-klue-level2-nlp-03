@@ -29,6 +29,7 @@ def inference(model, tokenized_sent, device):
     output_pred = []
     output_prob = []
     for i, data in enumerate(tqdm(dataloader)):
+        # RBERT inference에는 e1_mask, e2_mask도 모델에 들어가줘야함!
         with torch.no_grad():
             outputs = model(
                 input_ids=data['input_ids'].to(device),
@@ -59,18 +60,6 @@ def num_to_label(label):
         origin_label.append(dict_num_to_label[v])
 
     return origin_label
-
-
-# def load_test_dataset(dataset_dir, tokenizer, add_entity_marker, entity_marker_type, data_preprocessing):
-#     """
-#       test dataset을 불러온 후,
-#       tokenizing 합니다.
-#     """
-#     test_dataset = load_data(dataset_dir, "NO_AUG", add_entity_marker, entity_marker_type, data_preprocessing)
-#     test_label = list(map(int, test_dataset['label'].values))
-#     # tokenizing dataset
-#     tokenized_test = tokenized_dataset(test_dataset, tokenizer)
-#     return test_dataset['id'], tokenized_test, test_label
 
 
 def main(args):
@@ -107,12 +96,6 @@ def main(args):
     best_state_dict = torch.load(args.model_dir)
     model.load_state_dict(best_state_dict)
 
-    # model_config= AutoConfig.from_pretrained(Tokenizer_NAME)
-    # model_config.num_labels= 30
-    # model= AutoModelForSequenceClassification.from_pretrained(Tokenizer_NAME, config= model_config)
-
-    # best_state_dict= torch.load(args.model_dir)
-    # model.load_state_dict(best_state_dict)
     model.parameters
     model.to(device)
 

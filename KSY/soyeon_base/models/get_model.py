@@ -9,6 +9,9 @@ from transformers import (
                     AutoModelForSequenceClassification)
 
 def get_model(args):
+    """ 적절한 모델 반환용을 위한 함수
+    사용하지 않았음!
+    """
     pass
 
 if __name__=='__main__':
