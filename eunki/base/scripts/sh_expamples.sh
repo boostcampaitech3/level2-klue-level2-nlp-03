@@ -1,16 +1,14 @@
 nohup python kfold_train_test.py --model_name klue/roberta-large \
                 --use_wandb True \
                 --user_name Eunki \
-                --exp_name preprocess_1e-5 \
+                --exp_name file_ensemble \
                 --eval_steps 300 \
                 --save_steps 300 \
                 --load_best_model_at_end True \
-                --epochs 10 \
-                --lr 1e-5 \
-                --train_bs 64 \
-                --eval_bs 64 \
-                --warmup_steps 300 \
+                --epochs 7 \
+                --train_bs 32 \
+                --eval_bs 32 \
                 --loss_fn labelsmoothingloss \
-                --smoothing 0.2 \
+                --smoothing 0.1 \
                 --head_type modifiedBiLSTM \
-                --train_data_dir ../dataset/train/preprocess.csv &
+                --train_data_dir ../dataset/train/en_all_train.csv &
