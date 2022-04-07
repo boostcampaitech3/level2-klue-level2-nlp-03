@@ -196,6 +196,7 @@ def load_test_dataset(dataset_dir, tokenizer,
 
     # 데이터셋으로 제작
     test_dataset = preprocessing_dataset(pd_dataset, augmentation)
+    # breakpoint()
     test_label = list(map(int,test_dataset['label'].values))
     tokenized_test = tokenized_dataset(test_dataset, tokenizer)
     # breakpoint()

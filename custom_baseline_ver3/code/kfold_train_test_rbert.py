@@ -153,8 +153,11 @@ class Lite(LightningLite):
         # edited by soyeon;(entity type2 + run preprocess 돌린 csv 파일 생성했기 때문에 해당 부분 불러오도록 함) 만약 다른 설정으로 할 경우 수행해야함(약 20분 소요)
         total_train_dataset = load_data(args.train_data_dir, args.augmentation, args.add_entity_marker, args.entity_marker_type, args.data_preprocessing)
         """
+        # 요 밑에껄로 해보기 -> 해당 파일은 e1_mask, e2_mask 반환이 안됨
         # total_train_dataset = pd.read_csv('/opt/ml/dataset/train/final_preprocess_entity_marker2.csv')
-        total_train_dataset = pd.read_csv('/opt/ml/tests/level2-klue-level2-nlp-03/KSY/final_train_entity_marker2.csv')
+        total_train_dataset = load_data(args.train_data_dir, args.augmentation, args.add_entity_marker,
+                                        args.entity_marker_type, args.data_preprocessing)
+        # total_train_dataset = pd.read_csv('/opt/ml/tests/level2-klue-level2-nlp-03/KSY/final_train_entity_marker2.csv')
         print('Done!')
 
         # 먼저 중복여부 판별을 위한 코드
@@ -265,7 +268,7 @@ class Lite(LightningLite):
                 train_dataset=RE_train_dataset,  # training dataset
                 eval_dataset=RE_dev_dataset,  # evaluation dataset
                 compute_metrics=compute_metrics,  # define metrics function
-                callbacks=[customWandbCallback(),EarlyStoppingCallback(early_stopping_patience= 9)],  # EarlyStoppingCallback(early_stopping_patience= 3)],
+                callbacks=[customWandbCallback(),EarlyStoppingCallback(early_stopping_patience= 4)],  # EarlyStoppingCallback(early_stopping_patience= 3)],
                 cls_list=cls_list,
                 add_args=args
             )
@@ -314,7 +317,7 @@ def main():
         # TODO; 실험 이름 convention은 천천히 정해볼까요?
         # if args.use_entity_embedding:
         #     exp_name = args.exp_name
-        exp_full_name = f'{args.user_name}_{args.exp_name}(train.csv)_{args.model_name}_{args.lr}_{args.optimizer}_{args.loss_fn}'
+        exp_full_name = f'{args.user_name}_{args.exp_name}(preprocess.csv)_{args.model_name}_{args.lr}_{args.optimizer}_{args.loss_fn}'
         wandb.login()
 
         # project : 우리 그룹의 프로젝트 이름

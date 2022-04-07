@@ -149,6 +149,7 @@ class RobertaEmbeddings(nn.Module):
         token_type_embeddings = self.token_type_embeddings(token_type_ids)
 
         embeddings = inputs_embeds + token_type_embeddings
+  
         if self.use_entity_embedding:
             entity_type_embeddings = self.entity_type_embeddings(e1_mask+e2_mask)
             embeddings += entity_type_embeddings
@@ -512,6 +513,153 @@ class FCLayer(nn.Module):
         if self.use_activation:
             x = self.tanh(x)
         return self.linear(x)
+# https://github.com/huggingface/transformers/blob/main/src/transformers/activations.py
+class NewGELUActivation(nn.Module):
+    """
+    Implementation of the GELU activation function currently in Google BERT repo (identical to OpenAI GPT). Also see
+    the Gaussian Error Linear Units paper: https://arxiv.org/abs/1606.08415
+    """
+
+    def forward(self, input ) :
+        return 0.5 * input * (1.0 + torch.tanh(math.sqrt(2.0 / math.pi) * (input + 0.044715 * torch.pow(input, 3.0))))
+
+class RobertaClassificationHeadMore(nn.Module):
+    """Head for sentence-level classification tasks."""
+
+    def __init__(self, config):
+        super().__init__()
+        # config.hidden_size -> 2*config.hidden_size로 해봄
+        # self.dense = nn.Linear(3*config.hidden_size, config.hidden_size )
+        #
+        self.entity_fc = FCLayer(config.hidden_size, config.hidden_size)
+        self.cls_fc = FCLayer(config.hidden_size, config.hidden_size)
+        # 0.1
+        classifier_dropout = (
+            config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
+        )
+
+        self.dropout = nn.Dropout(classifier_dropout)
+        # self.out_proj = nn.Linear(config.hidden_size, config.num_labels)
+
+        self.out_proj1 = FCLayer(3*config.hidden_size, config.hidden_size,
+                                classifier_dropout, use_activation=False)
+        self.out_proj2 = FCLayer(config.hidden_size, config.num_labels,
+                                classifier_dropout, use_activation=False)
+        self.gelu = NewGELUActivation()
+
+    def entity_average(self, hidden_output, e_mask):
+        # 코드 참고
+        # https://github.com/monologg/R-BERT/blob/master/model.py
+        """
+        Average the entity hidden state vectors (H_i ~ H_j)
+        :param hidden_output: [batch_size, j-i+1, dim]
+        :param e_mask: [batch_size, max_seq_len]
+                e.g. e_mask[0] == [0, 0, 0, 1, 1, 1, 0, 0, ... 0]
+        :return: [batch_size, dim]
+        """
+        e_mask_unsqueeze = e_mask.unsqueeze(1)  # [b, 1, j-i+1]
+        length_tensor = (e_mask != 0).sum(dim=1).unsqueeze(1)  # [batch_size, 1]
+
+        # [b, 1, j-i+1] * [b, j-i+1, dim] = [b, 1, dim] -> [b, dim]
+        sum_vector = torch.bmm(e_mask_unsqueeze.float(), hidden_output).squeeze(1)
+        avg_vector = sum_vector.float() / length_tensor.float()  # broadcasting
+        return avg_vector
+
+    def forward(self, features, e1_mask, e2_mask, avg = False, **kwargs):
+        # avg or use cls token
+
+
+        e1_h = self.entity_average(features, e1_mask)
+        e2_h = self.entity_average(features, e2_mask)
+        pooled_output =  features[:, 0, :]
+
+        pooled_output = self.cls_fc(pooled_output)
+        e1_h = self.entity_fc(e1_h)
+        e2_h = self.entity_fc(e2_h)
+
+        concat_h = torch.cat([pooled_output, e1_h, e2_h], dim=-1)
+        x = self.out_proj1(concat_h)
+        x = self.gelu(x)
+        x = self.out_proj2(x)
+        """ 수정님과 회의
+        # subj, obj = features[:,e1_mask] , feature[:,e2_mask]
+        # subj [bs, subj_길이, hidden_dim]
+        # subj.mean() -> [bs, hidden_dim]
+
+        # obj [bs, subj_길이, hidden_dim]
+        # obj.mean() -> [bs, hidden_dim]
+        """
+
+        return x
+
+class RobertaClassificationHeadMore2(nn.Module):
+    """Head for sentence-level classification tasks."""
+
+    def __init__(self, config):
+        super().__init__()
+        # config.hidden_size -> 2*config.hidden_size로 해봄
+        # self.dense = nn.Linear(3*config.hidden_size, config.hidden_size )
+        #
+        self.entity_fc = FCLayer(config.hidden_size, config.hidden_size)
+        self.cls_fc = FCLayer(config.hidden_size, config.hidden_size)
+        # 0.1
+        classifier_dropout = (
+            config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
+        )
+
+        self.dropout = nn.Dropout(classifier_dropout)
+        # self.out_proj = nn.Linear(config.hidden_size, config.num_labels)
+
+        self.out_proj1 = FCLayer(3*config.hidden_size, config.hidden_size,
+                                classifier_dropout, use_activation=False)
+        self.out_proj2 = FCLayer(config.hidden_size, config.num_labels,
+                                0.5, use_activation=False)
+        self.gelu = NewGELUActivation()
+
+    def entity_average(self, hidden_output, e_mask):
+        # 코드 참고
+        # https://github.com/monologg/R-BERT/blob/master/model.py
+        """
+        Average the entity hidden state vectors (H_i ~ H_j)
+        :param hidden_output: [batch_size, j-i+1, dim]
+        :param e_mask: [batch_size, max_seq_len]
+                e.g. e_mask[0] == [0, 0, 0, 1, 1, 1, 0, 0, ... 0]
+        :return: [batch_size, dim]
+        """
+        e_mask_unsqueeze = e_mask.unsqueeze(1)  # [b, 1, j-i+1]
+        length_tensor = (e_mask != 0).sum(dim=1).unsqueeze(1)  # [batch_size, 1]
+
+        # [b, 1, j-i+1] * [b, j-i+1, dim] = [b, 1, dim] -> [b, dim]
+        sum_vector = torch.bmm(e_mask_unsqueeze.float(), hidden_output).squeeze(1)
+        avg_vector = sum_vector.float() / length_tensor.float()  # broadcasting
+        return avg_vector
+
+    def forward(self, features, e1_mask, e2_mask, avg = False, **kwargs):
+        # avg or use cls token
+
+
+        e1_h = self.entity_average(features, e1_mask)
+        e2_h = self.entity_average(features, e2_mask)
+        pooled_output =  features[:, 0, :]
+
+        pooled_output = self.cls_fc(pooled_output)
+        e1_h = self.entity_fc(e1_h)
+        e2_h = self.entity_fc(e2_h)
+
+        concat_h = torch.cat([pooled_output, e1_h, e2_h], dim=-1)
+        x = self.out_proj1(concat_h)
+        x = self.gelu(x)
+        x = self.out_proj2(x)
+        """ 수정님과 회의
+        # subj, obj = features[:,e1_mask] , feature[:,e2_mask]
+        # subj [bs, subj_길이, hidden_dim]
+        # subj.mean() -> [bs, hidden_dim]
+
+        # obj [bs, subj_길이, hidden_dim]
+        # obj.mean() -> [bs, hidden_dim]
+        """
+
+        return x
 
 class RobertaClassificationHead(nn.Module):
     """Head for sentence-level classification tasks."""
@@ -530,6 +678,7 @@ class RobertaClassificationHead(nn.Module):
 
         self.dropout = nn.Dropout(classifier_dropout)
         # self.out_proj = nn.Linear(config.hidden_size, config.num_labels)
+
         self.out_proj = FCLayer(3*config.hidden_size, config.num_labels,
                                 classifier_dropout, use_activation=False)
 
@@ -675,6 +824,11 @@ class customRBERTForSequenceClassification(RobertaPreTrainedModel):
 
         if config.head_type == "more_dense":
             self.classifier = RobertaClassificationHead(config)
+        elif config.head_type =="double_more_dense":
+            # stacking one layer and gelu activation
+            self.classifier = RobertaClassificationHeadMore(config)
+        elif config.head_type =='double_more_dense2':
+            self.classifier = RobertaClassificationHeadMore2(config)
         else:
             print('RBERT 모델은 more_dense version만 구현됐습니다.')
             raise NotImplementedError
