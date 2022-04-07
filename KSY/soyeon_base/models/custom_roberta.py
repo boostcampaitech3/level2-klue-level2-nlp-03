@@ -492,6 +492,98 @@ class RobertaClassificationHead(nn.Module):
         x = torch.tanh(x)
         x = self.dropout(x)
         x = self.out_proj(x)
+
+        return x
+
+class RobertaClassificationHeadConv(nn.Module):
+    """Head for sentence-level classification tasks."""
+
+    def __init__(self, config):
+        super().__init__()
+        # config.hidden_size -> 2*config.hidden_size로 해봄
+        # 현재 config.hidden_size = 1024
+        # 사용 참고: https://sanghyu.tistory.com/24
+        # 1) OPT 1
+        # self.conv1d 는 input embedding 크기를 channel 개수로 보고 -> output embedding을 out channel로 연결, kernel size=1
+        self.conv1d_v1 = nn.Conv1d(in_channels=config.hidden_size, out_channels=config.hidden_size, kernel_size=1, bias=False)
+        # 1) OPT 2
+        # self.conv1d 는 input sequence는 CLS 1개이고, 그 CLS의 embedding dim이 kernel size 크기로
+        # channel을 config.hidden_size 만큼 만들어서 CLS1개에 kernel size만큼 곱해져서 나온 output을(bs,1) 총 out_channel 개수만큼 수행해서 (bs, 1024)로 만들어줌
+        # dim 맞춰주기 위해 reshape 작업은 좀 필요
+        self.conv1d_v2 = nn.Conv1d(in_channels=1, out_channels=config.hidden_size, kernel_size=config.hidden_size, bias=False)
+
+        self.dense = nn.Linear(config.hidden_size, 2*config.hidden_size)
+        classifier_dropout = (
+            config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
+        )
+
+        self.dropout = nn.Dropout(classifier_dropout)
+        self.out_proj = nn.Linear(2*config.hidden_size, config.num_labels)
+
+    def forward(self, features, avg = False, **kwargs):
+        # avg or use cls token
+        if avg:
+            x = torch.mean(features,dim=1)
+        else:
+            x = features[:, 0, :]  # take <s> token (equiv. to [CLS])
+            bs, hidden_dim = x.shape
+        # 마지막 CLS token embedding shape : (bs, hidden_dim)
+        # 한개의 CLS token 만 넣을 것이라면 두가지 옵션이 존재
+        # CLS의 hidden dim을 dim으로 보고, kernel size 1로 두고 output
+        # dimension 처리를 위해 unsqueeze, dense에 들어가기 전 처리 필요
+        # conv1d_v1 버전 일경우
+        x =self.conv1d_v1(x.unsqueeze(dim=2))
+
+        # conv1d_v2 버전 일경우
+        # x = self.conv1d_v2(x.unsqueeze(dim=1))
+
+        x = self.dropout(x)
+        # x = self.dense(x.reshape(bs, hidden_dim))
+        x = self.dense(x.view(bs, -1))
+        x = torch.tanh(x)
+        x = self.dropout(x)
+        x = self.out_proj(x)
+        breakpoint()
+        return x
+
+
+class RobertaClassificationHeadConvSeq(nn.Module):
+    """Head for sentence-level classification tasks."""
+
+    def __init__(self, config):
+        super().__init__()
+        # config.hidden_size -> 2*config.hidden_size로 해봄
+        # 현재 config.hidden_size = 1024
+        # 사용 참고: https://chriskhanhtran.github.io/posts/cnn-sentence-classification/
+
+        # 근데 예네의 경우 padding 값도 averaging 돼서.. 좀 수정이 필요할 것 같다.
+        # 심지어 메모리도 많이 먹음
+        self.conv1d_v1 = nn.Conv1d(in_channels=config.hidden_size, out_channels=config.hidden_size, kernel_size=1024, bias=False)
+
+        # self.dense = nn.Linear(config.hidden_size, 2 * config.hidden_size)
+        classifier_dropout = (
+            config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
+        )
+
+        self.dropout = nn.Dropout(classifier_dropout)
+        self.out_proj = nn.Linear(2 * config.hidden_size, config.num_labels)
+
+    def forward(self, features, avg=False, **kwargs):
+        # avg or use cls token
+        # if avg:
+        #     x = torch.mean(features, dim=1)
+        # else:
+        #     x = features[:, 0, :]  # take <s> token (equiv. to [CLS])
+        #     bs, hidden_dim = x.shape
+        x = features
+        breakpoint()
+
+
+        x = self.dropout(x)
+        x = self.dense(x.reshape(bs, hidden_dim))
+        x = torch.tanh(x)
+        x = self.dropout(x)
+        x = self.out_proj(x)
         return x
 
 class RobertaClassificationLSTMHead(nn.Module):
@@ -521,7 +613,7 @@ class RobertaClassificationLSTMHead(nn.Module):
             # 따라서 entity embedding을 더 입력으로 받거나 아니면 위에 처럼
             # 전체 token embedding sequence  넣는 것이 필요
             x = features[:, 0, :]  # take <s> token (equiv. to [CLS])
-            x = x.unsqueeze(dim=1)
+            x = x.unsqueeze(dim=1) # [batch_size, hidden_dim] -> [batch_size, 1, hidden_dim]
         x = self.dropout(x)
 
         # 향후 TODO: lstm의 output, hidden dim 나오는 방식
@@ -539,6 +631,7 @@ class RobertaClassificationBidirectionalLSTMHead(nn.Module):
     """
 
     # TODO: LSTM의 hidden dimension configuration @ 소연
+    # edit by seyeon
     def __init__(self, config):
         super().__init__()
         self.lstm = nn.LSTM(config.hidden_size, config.hidden_size, batch_first=True, bidirectional=True)
@@ -595,7 +688,12 @@ class customRobertaForSequenceClassification(RobertaPreTrainedModel):
             self.classifier = RobertaClassificationLSTMHead(config)
         elif config.head_type =="modifiedBiLSTM":
             self.classifier = RobertaClassificationBidirectionalLSTMHead(config)
-
+        elif config.head_type =='dense_conv1':
+            self.classifier = RobertaClassificationHeadConv(config)
+        elif config.head_type =='dense_conv2':
+            self.classifier = RobertaClassificationHeadConvSeq(config)
+        else:
+            raise NotImplementedError
         # Initialize weights and apply final processing
         self.post_init()
     def post_init(self):

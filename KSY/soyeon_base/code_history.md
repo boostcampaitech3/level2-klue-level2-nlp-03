@@ -1,13 +1,19 @@
 ### Code Histroeis
-> last updated: 03/26
+> last updated: 04/07
 
-> notebooks updated : on-going
+> notebooks updated : done
+> 
 ### TODO
-- [ ] multi-sentence, single sentence
-- [ ] more elaborately entity-marking(e.g, punctuation, entity typing)
-- [ ] model-tail design(e.g, stacking additional layers) - CODE SEARCH
-- [ ] entity grouping & each model for corresponding grouping or hierarchical - PAPER SEARCH
-- [ ] ner + gives penalty when entity pairs are never to happen - mentor suggested
+- [x] multi-sentence, single sentence -> single sentence for RBERT
+- [x] more elaborately entity-marking(e.g, punctuation, entity typing) -> entity marking by sujeong, entity embeddig by soyeon
+- [x] model-tail design(e.g, stacking additional layers) - RBERT + modified LSTM; dropout, stacked FC
+- [ ] entity grouping & each model for corresponding grouping or hierarchical -> limited time
+- [ ] ner + gives penalty when entity pairs are never to happen - mentor suggested -> limited time
+
+
+### 04/ 04-06
+* entity embedding
+* RBERT
 
 ### 04/03
 * code integration

@@ -1,4 +1,5 @@
-from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification, Trainer, TrainingArguments
+from distutils.command.config import config
+from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification, Trainer, TrainingArguments, AutoModel
 from torch.utils.data import DataLoader
 from load_data import *
 import pandas as pd
@@ -9,6 +10,7 @@ import pickle as pickle
 import numpy as np
 import argparse
 from tqdm import tqdm
+
 from arguments import get_args
 
 from custom.trainer import customTrainer
@@ -52,12 +54,12 @@ def num_to_label(label):
   
   return origin_label
 
-def load_test_dataset(dataset_dir, tokenizer):
+def load_test_dataset(dataset_dir, tokenizer, add_entity_marker, entity_marker_type, data_preprocessing):
   """
     test dataset을 불러온 후,
     tokenizing 합니다.
   """
-  test_dataset = load_data(dataset_dir)
+  test_dataset = load_data(dataset_dir, "NO_AUG", add_entity_marker, entity_marker_type, data_preprocessing)
   test_label = list(map(int,test_dataset['label'].values))
   # tokenizing dataset
   tokenized_test = tokenized_dataset(test_dataset, tokenizer)
@@ -69,30 +71,44 @@ def main(args):
   """
   device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
   # load tokenizer
-  # "monologg/koelectra-base-v3-discriminator"
-  Tokenizer_NAME = "klue/roberta-large" #"klue/bert-base"
-
+  Tokenizer_NAME = "klue/roberta-large"
   tokenizer = AutoTokenizer.from_pretrained(Tokenizer_NAME)
-  # breakpoint()
-  ## load my model
-  MODEL_NAME = args.model_dir # model dir.
+  if args.add_entity_marker: # added by sujeong; if entity marker==True, add special token.
+    added_token_num, tokenizer = add_special_token(tokenizer, args.entity_marker_type) 
+  
+  
+  MODEL_NAME = args.model_dir
 
-  # model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
-  # model_config.num_labels = 30 # args.num_labels
-  # model_config.update({"head_type": args.head_type})
+  model_config = AutoConfig.from_pretrained(Tokenizer_NAME)
+  model_config.update({"head_type": args.head_type})
+  model_config.num_labels = 30
+  if args.add_entity_marker: # added by sujeong; if entity marker==True, add special token.
+    model_config.vocab_size+=added_token_num
+  ## load my model
+  
+  # model dir
+  
   if args.head_type == 'base':
     # 아예 hugging face 지원 구조
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
-  else: # 수정 필요
-    model = customRobertaForSequenceClassification.from_pretrained(MODEL_NAME)
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
+  else:
+    model = customRobertaForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
+  
+  best_state_dict= torch.load(args.model_dir)
+  model.load_state_dict(best_state_dict)
 
-
+  # model_config= AutoConfig.from_pretrained(Tokenizer_NAME)
+  # model_config.num_labels= 30
+  # model= AutoModelForSequenceClassification.from_pretrained(Tokenizer_NAME, config= model_config)
+  
+  # best_state_dict= torch.load(args.model_dir)
+  # model.load_state_dict(best_state_dict)
   model.parameters
   model.to(device)
 
   ## load test datset
-  test_dataset_dir = "../../dataset/test/test_data.csv"
-  test_id, test_dataset, test_label = load_test_dataset(test_dataset_dir, tokenizer)
+  test_dataset_dir = "/opt/ml/dataset/test/test_data.csv"
+  test_id, test_dataset, test_label = load_test_dataset(test_dataset_dir, tokenizer, args.add_entity_marker, args.entity_marker_type, args.data_preprocessing)
   Re_test_dataset = RE_Dataset(test_dataset ,test_label)
 
   ## predict answer
@@ -103,18 +119,51 @@ def main(args):
   #########################################################
   # 아래 directory와 columns의 형태는 지켜주시기 바랍니다.
   output = pd.DataFrame({'id':test_id,'pred_label':pred_answer,'probs':output_prob,})
-
-  output.to_csv('./ro_prediction/submission_basic_lstm+ls_5300.csv', index=False) # 최종적으로 완성된 예측한 라벨 csv 파일 형태로 저장.
+  fold_num = args.fold_num
+  if not os.path.exists(f'./prediction/{args.model_name}'):
+    os.makedirs(f'./prediction/{args.model_name}')
+  output.to_csv(f'./prediction/{args.model_name}/submission_{fold_num}_end.csv', index=False) # 최종적으로 완성된 예측한 라벨 csv 파일 형태로 저장.
   #### 필수!! ##############################################
   print('---- Finish! ----')
-if __name__ == '__main__':
-  parser = argparse.ArgumentParser()
-  
+
+
+def str2bool(v):
+    # arguments에 유사한 값들끼리 다 boolean 처리 되도록
+
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+if __name__ == '__main__':    
   # model dir
-  parser.add_argument('--model_dir', type=str, default="/opt/ml/level2-klue-level2-nlp-03/KSY/ro_results_lstm+ls/checkpoint-5300")
-  parser.add_argument('--head_type', type=str,
+  for i in range(5):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model_name", type=str, default="roberta-large")
+    # entity_marker
+    # added by sujeong;
+    parser.add_argument("--add_entity_marker", type=str2bool, default=False, help="If you want to add entity marker, set this argument True.")
+    parser.add_argument("--entity_marker_type", type=str, default="entity_marker_punc",
+                        help="type of entity marker"
+                            "`entity_marker`:  [E1] Bill [/E1] was born in [E2] Seattle [/E2]"
+                            "`entity_marker_punc`:  @ Bill @ was born in # Seattle #"
+                            "`typed_entity_marker`: <S:PERSON> Bill </S:PERSON> was born in <O:CITY> Seattle </O:CITY>."
+                            "`typed_entity_marker_punc`:  @ +person+ Bill @ was born in #^city^ Seattle #.")
+    # preprocessing # 중복 괄호 제거, 이상한 문장 부호 수정, 연속 공백 수정
+    # added by sujeong;
+    parser.add_argument("--data_preprocessing", type=str2bool, default=False, help="If you want to make data preprocessed, set this argument True.")
+    
+    args = parser.parse_args()
+    parser.add_argument('--model_dir', type=str, default=f"./best_model_{i}/{args.model_name}/pytorch_model.bin")
+    #parser.add_argument('--model_dir', type=str, default=f"./results/fold_{i}/checkpoint-2100/pytorch_model.bin")
+    parser.add_argument('--fold_num', type=int, default=i)
+    parser.add_argument('--head_type', type=str,
                       default="modifiedBiLSTM")
-  args = parser.parse_args()
-  print(args)
-  main(args)
+    args = parser.parse_args()
+    print(args)
+    main(args)
   

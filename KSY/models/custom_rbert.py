@@ -69,6 +69,7 @@ def create_position_ids_from_input_ids(input_ids, padding_idx, past_key_values_l
 class RobertaEmbeddings(nn.Module):
     """
     Same as BertEmbeddings with a tiny tweak for positional embeddings indexing.
+    Masking 가능하도록 옵션 추가
     """
 
     # Copied from transformers.models.bert.modeling_bert.BertEmbeddings.__init__
@@ -78,7 +79,20 @@ class RobertaEmbeddings(nn.Module):
         # embedding dimension 은 vocab추가 시 config.vocab_size 변동
         self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=config.pad_token_id)
         self.position_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size)
-        self.token_type_embeddings = nn.Embedding(config.type_vocab_size, config.hidden_size)
+        # checkpoint에서 불러오는 parameter 때문에 type_vocab_size 를 2로 늘려주면 에러 발생!
+        self.token_type_embeddings = nn.Embedding(config.type_vocab_size, config.hidden_size) # roberta-large 1 / bert-base 2
+                                                    # 0,1
+        # 따로 선언해서 넣어주는 방법 사용 -> 대신 initialization 중요할듯?
+        self.use_entity_embedding = config.use_entity_embedding
+        if config.use_entity_embedding:
+            print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+            print('@@@ you are using entity embedding @@@@')
+            print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+            self.entity_type_embeddings = nn.Embedding(config.entity_emb_size, config.hidden_size)
+        else:
+            print('---------------------------------------')
+            print('@@@  N O T  using entity embedding @@@@')
+            print('---------------------------------------')
 
         # self.LayerNorm is not snake-cased to stick with TensorFlow model variable name and be able to load
         # any TensorFlow checkpoint file
@@ -102,7 +116,7 @@ class RobertaEmbeddings(nn.Module):
         # 추후 entity embedding 값을 선언하고, forward 부분에서 더해주는 것 필요할듯
 
     def forward(
-        self, input_ids=None, token_type_ids=None, position_ids=None, inputs_embeds=None, past_key_values_length=0
+        self, input_ids=None, token_type_ids=None, position_ids=None, inputs_embeds=None, e1_mask=None, e2_mask=None, past_key_values_length=0
     ):
         if position_ids is None:
             if input_ids is not None:
@@ -131,9 +145,15 @@ class RobertaEmbeddings(nn.Module):
 
         if inputs_embeds is None:
             inputs_embeds = self.word_embeddings(input_ids)
+
         token_type_embeddings = self.token_type_embeddings(token_type_ids)
 
         embeddings = inputs_embeds + token_type_embeddings
+  
+        if self.use_entity_embedding:
+            entity_type_embeddings = self.entity_type_embeddings(e1_mask+e2_mask)
+            embeddings += entity_type_embeddings
+
         if self.position_embedding_type == "absolute":
             position_embeddings = self.position_embeddings(position_ids)
             embeddings += position_embeddings
@@ -257,6 +277,8 @@ class RobertaEncoder(nn.Module):
 # 참고하는 코드들은 RobertaModel 은 크게 손대지 않았던데
 # 참고 코드 https://github.com/boostcampaitech2/klue-level2-nlp-14/blob/5154eca96ee9b7f17e5544c54d578ae1f10df401/solution/models/modeling_roberta.py#L10
 # 아마 손댈 필요가 있지 않을까 싶습니다.
+
+## forward 인자, embedding, classifier에 들어가는 부분 수정
 class customRobertaModel(RobertaPreTrainedModel):
     """
     The model can behave as an encoder (with only self-attention) as well as a decoder, in which case a layer of
@@ -351,6 +373,8 @@ class customRobertaModel(RobertaPreTrainedModel):
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
+        e1_mask : Optional[torch.Tensor] =None, # 여기
+        e2_mask : Optional[torch.Tensor] =None, # 여기
     ) -> Union[Tuple, BaseModelOutputWithPoolingAndCrossAttentions]:
         r"""
         encoder_hidden_states  (`torch.FloatTensor` of shape `(batch_size, sequence_length, hidden_size)`, *optional*):
@@ -370,6 +394,7 @@ class customRobertaModel(RobertaPreTrainedModel):
             If set to `True`, `past_key_values` key value states are returned and can be used to speed up decoding (see
             `past_key_values`).
         """
+
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
@@ -429,13 +454,18 @@ class customRobertaModel(RobertaPreTrainedModel):
         # and head_mask is converted to shape [num_hidden_layers x batch x num_heads x seq_length x seq_length]
         head_mask = self.get_head_mask(head_mask, self.config.num_hidden_layers)
 
+
         embedding_output = self.embeddings(
             input_ids=input_ids,
             position_ids=position_ids,
             token_type_ids=token_type_ids,
             inputs_embeds=inputs_embeds,
             past_key_values_length=past_key_values_length,
+            e1_mask = e1_mask,
+            e2_mask = e2_mask
         )
+
+
         encoder_outputs = self.encoder(
             embedding_output,
             attention_mask=extended_attention_mask,
@@ -450,6 +480,7 @@ class customRobertaModel(RobertaPreTrainedModel):
         )
         # TODO: encoder_outputs 은 BaseModelOutputWithPastAndCrossAttentions 클래스로 반환됩니다.
         # 그래서 어떤 값들이 리턴되고 어떤걸 선택해서 sequence output으로 사용되는지 확인할 필요가 있습니다.
+
         sequence_output = encoder_outputs[0]
         # breakpoint()
         # TODO: self.pooler가 있고 없고에 따른 pooled_output dimension
@@ -468,30 +499,231 @@ class customRobertaModel(RobertaPreTrainedModel):
             cross_attentions=encoder_outputs.cross_attentions,
         )
 
+# 수정 중
+class FCLayer(nn.Module):
+    def __init__(self, input_dim, output_dim, dropout_rate=0.0, use_activation=True):
+        super(FCLayer, self).__init__()
+        self.use_activation = use_activation
+        self.dropout = nn.Dropout(dropout_rate)
+        self.linear = nn.Linear(input_dim, output_dim)
+        self.tanh = nn.Tanh()
+
+    def forward(self, x):
+        x = self.dropout(x)
+        if self.use_activation:
+            x = self.tanh(x)
+        return self.linear(x)
+# https://github.com/huggingface/transformers/blob/main/src/transformers/activations.py
+class NewGELUActivation(nn.Module):
+    """
+    Implementation of the GELU activation function currently in Google BERT repo (identical to OpenAI GPT). Also see
+    the Gaussian Error Linear Units paper: https://arxiv.org/abs/1606.08415
+    """
+
+    def forward(self, input ) :
+        return 0.5 * input * (1.0 + torch.tanh(math.sqrt(2.0 / math.pi) * (input + 0.044715 * torch.pow(input, 3.0))))
+
+class RobertaClassificationHeadMore(nn.Module):
+    """Head for sentence-level classification tasks."""
+
+    def __init__(self, config):
+        super().__init__()
+        # config.hidden_size -> 2*config.hidden_size로 해봄
+        # self.dense = nn.Linear(3*config.hidden_size, config.hidden_size )
+        #
+        self.entity_fc = FCLayer(config.hidden_size, config.hidden_size)
+        self.cls_fc = FCLayer(config.hidden_size, config.hidden_size)
+        # 0.1
+        classifier_dropout = (
+            config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
+        )
+
+        self.dropout = nn.Dropout(classifier_dropout)
+        # self.out_proj = nn.Linear(config.hidden_size, config.num_labels)
+
+        self.out_proj1 = FCLayer(3*config.hidden_size, config.hidden_size,
+                                classifier_dropout, use_activation=False)
+        self.out_proj2 = FCLayer(config.hidden_size, config.num_labels,
+                                classifier_dropout, use_activation=False)
+        self.gelu = NewGELUActivation()
+
+    def entity_average(self, hidden_output, e_mask):
+        # 코드 참고
+        # https://github.com/monologg/R-BERT/blob/master/model.py
+        """
+        Average the entity hidden state vectors (H_i ~ H_j)
+        :param hidden_output: [batch_size, j-i+1, dim]
+        :param e_mask: [batch_size, max_seq_len]
+                e.g. e_mask[0] == [0, 0, 0, 1, 1, 1, 0, 0, ... 0]
+        :return: [batch_size, dim]
+        """
+        e_mask_unsqueeze = e_mask.unsqueeze(1)  # [b, 1, j-i+1]
+        length_tensor = (e_mask != 0).sum(dim=1).unsqueeze(1)  # [batch_size, 1]
+
+        # [b, 1, j-i+1] * [b, j-i+1, dim] = [b, 1, dim] -> [b, dim]
+        sum_vector = torch.bmm(e_mask_unsqueeze.float(), hidden_output).squeeze(1)
+        avg_vector = sum_vector.float() / length_tensor.float()  # broadcasting
+        return avg_vector
+
+    def forward(self, features, e1_mask, e2_mask, avg = False, **kwargs):
+        # avg or use cls token
+
+
+        e1_h = self.entity_average(features, e1_mask)
+        e2_h = self.entity_average(features, e2_mask)
+        pooled_output =  features[:, 0, :]
+
+        pooled_output = self.cls_fc(pooled_output)
+        e1_h = self.entity_fc(e1_h)
+        e2_h = self.entity_fc(e2_h)
+
+        concat_h = torch.cat([pooled_output, e1_h, e2_h], dim=-1)
+        x = self.out_proj1(concat_h)
+        x = self.gelu(x)
+        x = self.out_proj2(x)
+        """ 수정님과 회의
+        # subj, obj = features[:,e1_mask] , feature[:,e2_mask]
+        # subj [bs, subj_길이, hidden_dim]
+        # subj.mean() -> [bs, hidden_dim]
+
+        # obj [bs, subj_길이, hidden_dim]
+        # obj.mean() -> [bs, hidden_dim]
+        """
+
+        return x
+
+class RobertaClassificationHeadMore2(nn.Module):
+    """Head for sentence-level classification tasks."""
+
+    def __init__(self, config):
+        super().__init__()
+        # config.hidden_size -> 2*config.hidden_size로 해봄
+        # self.dense = nn.Linear(3*config.hidden_size, config.hidden_size )
+        #
+        self.entity_fc = FCLayer(config.hidden_size, config.hidden_size)
+        self.cls_fc = FCLayer(config.hidden_size, config.hidden_size)
+        # 0.1
+        classifier_dropout = (
+            config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
+        )
+
+        self.dropout = nn.Dropout(classifier_dropout)
+        # self.out_proj = nn.Linear(config.hidden_size, config.num_labels)
+
+        self.out_proj1 = FCLayer(3*config.hidden_size, config.hidden_size,
+                                classifier_dropout, use_activation=False)
+        self.out_proj2 = FCLayer(config.hidden_size, config.num_labels,
+                                0.5, use_activation=False)
+        self.gelu = NewGELUActivation()
+
+    def entity_average(self, hidden_output, e_mask):
+        # 코드 참고
+        # https://github.com/monologg/R-BERT/blob/master/model.py
+        """
+        Average the entity hidden state vectors (H_i ~ H_j)
+        :param hidden_output: [batch_size, j-i+1, dim]
+        :param e_mask: [batch_size, max_seq_len]
+                e.g. e_mask[0] == [0, 0, 0, 1, 1, 1, 0, 0, ... 0]
+        :return: [batch_size, dim]
+        """
+        e_mask_unsqueeze = e_mask.unsqueeze(1)  # [b, 1, j-i+1]
+        length_tensor = (e_mask != 0).sum(dim=1).unsqueeze(1)  # [batch_size, 1]
+
+        # [b, 1, j-i+1] * [b, j-i+1, dim] = [b, 1, dim] -> [b, dim]
+        sum_vector = torch.bmm(e_mask_unsqueeze.float(), hidden_output).squeeze(1)
+        avg_vector = sum_vector.float() / length_tensor.float()  # broadcasting
+        return avg_vector
+
+    def forward(self, features, e1_mask, e2_mask, avg = False, **kwargs):
+        # avg or use cls token
+
+
+        e1_h = self.entity_average(features, e1_mask)
+        e2_h = self.entity_average(features, e2_mask)
+        pooled_output =  features[:, 0, :]
+
+        pooled_output = self.cls_fc(pooled_output)
+        e1_h = self.entity_fc(e1_h)
+        e2_h = self.entity_fc(e2_h)
+
+        concat_h = torch.cat([pooled_output, e1_h, e2_h], dim=-1)
+        x = self.out_proj1(concat_h)
+        x = self.gelu(x)
+        x = self.out_proj2(x)
+        """ 수정님과 회의
+        # subj, obj = features[:,e1_mask] , feature[:,e2_mask]
+        # subj [bs, subj_길이, hidden_dim]
+        # subj.mean() -> [bs, hidden_dim]
+
+        # obj [bs, subj_길이, hidden_dim]
+        # obj.mean() -> [bs, hidden_dim]
+        """
+
+        return x
+
 class RobertaClassificationHead(nn.Module):
     """Head for sentence-level classification tasks."""
 
     def __init__(self, config):
         super().__init__()
         # config.hidden_size -> 2*config.hidden_size로 해봄
-        self.dense = nn.Linear(config.hidden_size, 2*config.hidden_size)
+        # self.dense = nn.Linear(3*config.hidden_size, config.hidden_size )
+        #
+        self.entity_fc = FCLayer(config.hidden_size, config.hidden_size)
+        self.cls_fc = FCLayer(config.hidden_size, config.hidden_size)
+        # 0.1
         classifier_dropout = (
             config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
         )
-        self.dropout = nn.Dropout(classifier_dropout)
-        self.out_proj = nn.Linear(2*config.hidden_size, config.num_labels)
 
-    def forward(self, features, avg = False, **kwargs):
+        self.dropout = nn.Dropout(classifier_dropout)
+        # self.out_proj = nn.Linear(config.hidden_size, config.num_labels)
+
+        self.out_proj = FCLayer(3*config.hidden_size, config.num_labels,
+                                classifier_dropout, use_activation=False)
+
+    def entity_average(self, hidden_output, e_mask):
+        # 코드 참고
+        # https://github.com/monologg/R-BERT/blob/master/model.py
+        """
+        Average the entity hidden state vectors (H_i ~ H_j)
+        :param hidden_output: [batch_size, j-i+1, dim]
+        :param e_mask: [batch_size, max_seq_len]
+                e.g. e_mask[0] == [0, 0, 0, 1, 1, 1, 0, 0, ... 0]
+        :return: [batch_size, dim]
+        """
+        e_mask_unsqueeze = e_mask.unsqueeze(1)  # [b, 1, j-i+1]
+        length_tensor = (e_mask != 0).sum(dim=1).unsqueeze(1)  # [batch_size, 1]
+
+        # [b, 1, j-i+1] * [b, j-i+1, dim] = [b, 1, dim] -> [b, dim]
+        sum_vector = torch.bmm(e_mask_unsqueeze.float(), hidden_output).squeeze(1)
+        avg_vector = sum_vector.float() / length_tensor.float()  # broadcasting
+        return avg_vector
+
+    def forward(self, features, e1_mask, e2_mask, avg = False, **kwargs):
         # avg or use cls token
-        if avg:
-            x = torch.mean(features,dim=1)
-        else:
-            x = features[:, 0, :]  # take <s> token (equiv. to [CLS])
-        x = self.dropout(x)
-        x = self.dense(x)
-        x = torch.tanh(x)
-        x = self.dropout(x)
-        x = self.out_proj(x)
+
+
+        e1_h = self.entity_average(features, e1_mask)
+        e2_h = self.entity_average(features, e2_mask)
+        pooled_output =  features[:, 0, :]
+
+        pooled_output = self.cls_fc(pooled_output)
+        e1_h = self.entity_fc(e1_h)
+        e2_h = self.entity_fc(e2_h)
+
+        concat_h = torch.cat([pooled_output, e1_h, e2_h], dim=-1)
+        x = self.out_proj(concat_h)
+
+        """ 수정님과 회의
+        # subj, obj = features[:,e1_mask] , feature[:,e2_mask]
+        # subj [bs, subj_길이, hidden_dim]
+        # subj.mean() -> [bs, hidden_dim]
+
+        # obj [bs, subj_길이, hidden_dim]
+        # obj.mean() -> [bs, hidden_dim]
+        """
+
         return x
 
 class RobertaClassificationLSTMHead(nn.Module):
@@ -521,7 +753,7 @@ class RobertaClassificationLSTMHead(nn.Module):
             # 따라서 entity embedding을 더 입력으로 받거나 아니면 위에 처럼
             # 전체 token embedding sequence  넣는 것이 필요
             x = features[:, 0, :]  # take <s> token (equiv. to [CLS])
-            x = x.unsqueeze(dim=1)
+            x = x.unsqueeze(dim=1) # [batch_size, hidden_dim] -> [batch_size, 1, hidden_dim]
         x = self.dropout(x)
 
         # 향후 TODO: lstm의 output, hidden dim 나오는 방식
@@ -539,6 +771,7 @@ class RobertaClassificationBidirectionalLSTMHead(nn.Module):
     """
 
     # TODO: LSTM의 hidden dimension configuration @ 소연
+    # edit by seyeon
     def __init__(self, config):
         super().__init__()
         self.lstm = nn.LSTM(config.hidden_size, config.hidden_size, batch_first=True, bidirectional=True)
@@ -575,14 +808,14 @@ class RobertaClassificationBidirectionalLSTMHead(nn.Module):
         x = self.fc2(x)
         return x
 
-class customRobertaForSequenceClassification(RobertaPreTrainedModel):
+# RBERT style
+class customRBERTForSequenceClassification(RobertaPreTrainedModel):
     _keys_to_ignore_on_load_missing = [r"position_ids"]
 
     def __init__(self, config):
         super().__init__(config)
         self.num_labels = config.num_labels
         self.config = config
-        # from transformers import RobertaModel
 
         # 여기서 add_pooling_layer를 추가할지 안할지 선택합니다.
         self.roberta = customRobertaModel(config, add_pooling_layer=False)
@@ -591,10 +824,18 @@ class customRobertaForSequenceClassification(RobertaPreTrainedModel):
 
         if config.head_type == "more_dense":
             self.classifier = RobertaClassificationHead(config)
-        elif config.head_type =="lstm":
-            self.classifier = RobertaClassificationLSTMHead(config)
-        elif config.head_type =="modifiedBiLSTM":
-            self.classifier = RobertaClassificationBidirectionalLSTMHead(config)
+        elif config.head_type =="double_more_dense":
+            # stacking one layer and gelu activation
+            self.classifier = RobertaClassificationHeadMore(config)
+        elif config.head_type =='double_more_dense2':
+            self.classifier = RobertaClassificationHeadMore2(config)
+        else:
+            print('RBERT 모델은 more_dense version만 구현됐습니다.')
+            raise NotImplementedError
+        # elif config.head_type =="lstm":
+        #     self.classifier = RobertaClassificationLSTMHead(config)
+        # elif config.head_type =="modifiedBiLSTM":
+        #     self.classifier = RobertaClassificationBidirectionalLSTMHead(config)
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -636,6 +877,9 @@ class customRobertaForSequenceClassification(RobertaPreTrainedModel):
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
+        e1_mask: Optional[torch.Tensor] = None,
+        e2_mask: Optional[torch.Tensor] = None,
+
     ) -> Union[Tuple, SequenceClassifierOutput]:
         r"""
         labels (`torch.LongTensor` of shape `(batch_size,)`, *optional*):
@@ -644,6 +888,7 @@ class customRobertaForSequenceClassification(RobertaPreTrainedModel):
             `config.num_labels > 1` a classification loss is computed (Cross-Entropy).
         """
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
 
         outputs = self.roberta(
             input_ids,
@@ -655,12 +900,18 @@ class customRobertaForSequenceClassification(RobertaPreTrainedModel):
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
+            e1_mask = e1_mask,
+            e2_mask = e2_mask
+
         )
+
         # TODO: 위에서 정의된 model의 아웃풋으로 나오게 되면, 해당 output을 사용하고
         # sequence_output으로 classifier에 넘기게 됩니다. 이때 어떤 값이 넘어가고, dimension을 갖는지 확인 필요합니다.
         sequence_output = outputs[0]
         # breakpoint()
-        logits = self.classifier(sequence_output)
+        logits = self.classifier(sequence_output,
+                                 e1_mask = e1_mask,
+                                 e2_mask = e2_mask)
 
         loss = None
         if labels is not None:
@@ -711,7 +962,7 @@ if __name__=='__main__':
     # breakpoint()
     # model = RobertaModel(conf)
     model =customRobertaForSequenceClassification(conf)
-    breakpoint()
+
     # model = RobertaForSequenceClassification(conf)
 
     print(model)
