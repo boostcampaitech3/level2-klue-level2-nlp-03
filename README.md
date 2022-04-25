@@ -1,5 +1,3 @@
-# level2-klue-level2-nlp-03
-
 <img width="498" alt="image" src="https://user-images.githubusercontent.com/81913386/165032471-0d975c67-ebf2-4941-884f-64db62e2b68a.png">
 
 
