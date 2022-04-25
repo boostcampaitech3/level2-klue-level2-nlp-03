@@ -1,6 +1,7 @@
 # level2-klue-level2-nlp-03
 
-![Untitled](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/593ab849-27e4-432e-bac4-7c69064e8d98/Untitled.png)
+<img width="498" alt="image" src="https://user-images.githubusercontent.com/81913386/165032471-0d975c67-ebf2-4941-884f-64db62e2b68a.png">
+
 
 ## 프로젝트 개요
 
@@ -67,20 +68,22 @@
 - 주어진 데이터의 분포를 시각화 및 파악하고 중복 및 오태깅된 데이터 파악 및 전처리
     - cleansing 작업을 통해  f1-socre를 0.3 정도 상승시킬 수 있었다.
     
-    ![Untitled](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/a16e68f3-f2bd-4887-bcc8-0a37dc3f9b61/Untitled.png)
+    <img width="465" alt="image" src="https://user-images.githubusercontent.com/81913386/165032536-db45ace7-3e21-4df8-bb91-f68a97cb078f.png">
     
 - Entity를 중심으로 세부 EDA 진행
     - 관계 예측에서 가장 중요한 데이터인 Entity들의 양상을 파악하고자 Entity 중심 EDA 진행
     - 한국어 Dataset이지만 영어, 중국어, 그리스어, 숫자, 특수문자 등 한국어가 아닌 문자로 구성된 Entity도 있다는 사실을 알게 되었고, 이를 통해 Entity를 보존하기 위해서는 Back translation이나 전처리 단계에서 Entity를 특정 토큰으로 치환하여 보호하는 방법을 생각하게 되었다.
         
-        ![스크린샷 2022-04-09 오후 3.49.00.png](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/ac18c170-9b0f-4961-be3f-57f3cf02263d/스크린샷_2022-04-09_오후_3.49.00.png)
+        <img width="435" alt="image" src="https://user-images.githubusercontent.com/81913386/165032578-da3b3f47-7dd9-412b-8d5b-b461d58e71f1.png">
+
         
 - Back translation
     - `Google translation api`를 이용해서 한국어에서 각각 영어, 일본어로 back-translation을 진행하엿다. back-translation을 진행하는 도중 entity들이 훼손되지 않게 Masking 작업을 진행했는데 일부 데이터의 entity masking이 깨진것을 확인했다. 깨진 데이터를 최대한 제거하고 train.csv와 concat 했다.
     
-    ![Untitled](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/372ee904-39f1-4ac6-bf1e-6ffa113ccf4f/Untitled.png)
-    
-    ![output.png](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/5a149e7d-a23f-4b68-8e40-005faafa5dfd/output.png)
+    <img width="466" alt="image" src="https://user-images.githubusercontent.com/81913386/165032617-e93af490-169b-47da-af8b-d582f46b3021.png">
+    <img width="466" alt="image" src="https://user-images.githubusercontent.com/81913386/165032648-363ce3c6-1b3e-4f0d-bbc3-ec305445cf48.png">
+
+
     
     - 총 2개의 데이터셋을 만들었는데, 하나는 기존에 있는 train.csv 전체 데이터를 이용하여 영어와 일본어로 back-translation한 데이터를 추가하여 총 기존 train.csv 대비 3배의 데이터셋을 만들어내었다.
     - 나머지 하나는 데이터의 불균형이 크다는 점을 착안해 train.csv의 각 라벨의 평균 값보다 적은 개수의 라벨에 대한 데이터를 중심으로 데이터를 증강시켰다. 이경우 1.5배의 데이터셋을 만들어내었다.
@@ -122,7 +125,7 @@
 - Entity Tagging 다양화
     - 논문(An Improved Baseline for Sentence-level Relation Extraction)에서 성능 향상의 효과를 보았던 4가지 Entity Tagging 방식 후보군을 모두 실험(아래 사진에서 Entity Mask를 제외한 4가지)
         
-        ![스크린샷 2022-04-09 오후 2.42.56.png](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/6af351e6-0a3b-47ae-9987-56076ac6b011/스크린샷_2022-04-09_오후_2.42.56.png)
+        <img width="432" alt="image" src="https://user-images.githubusercontent.com/81913386/165032718-98e9b8c4-f4de-4257-8364-46ef86c007f8.png">
         
     - 논문에서는 4번째 방식이 성능이 가장 좋았지만, 데이터가 다르기 때문에 성능이 다르게 적용할 수도 있다고 생각하여 4가지 방식 모두 성능 추이를 확인
     - 이전 실험들 중에서 좋은 성능을 보였던 Stratified kfold, BiLSTM layer를 사용한 환경으로 환경을 통일하고, Entity Tagging 방식만 변경하여 성능 비교 진행
@@ -134,9 +137,10 @@
 
 - Public 3등, Private 5등
 
-![Untitled](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/ccad84c8-1ceb-48f7-9584-6dc89d0146ad/Untitled.png)
+<img width="492" alt="image" src="https://user-images.githubusercontent.com/81913386/165032752-82c13af6-3a67-4402-ae34-625168f04667.png">
 
-![Untitled](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/1fbab316-0530-48ab-a1c9-88bb9b8fe817/Untitled.png)
+<img width="495" alt="image" src="https://user-images.githubusercontent.com/81913386/165032785-6072bbad-eec0-452c-a2c2-0e6f1726d0bb.png">
+
 
 [기능과 성능 추이](https://www.notion.so/a76d50093c494ffd96c27acca388ba0c)
 
