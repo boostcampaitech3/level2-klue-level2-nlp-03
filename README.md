@@ -29,6 +29,19 @@
 
 ---
 
+### 최종
+
+- Public 3등, Private 5등
+
+<img width="492" alt="image" src="https://user-images.githubusercontent.com/81913386/165032752-82c13af6-3a67-4402-ae34-625168f04667.png">
+
+<img width="495" alt="image" src="https://user-images.githubusercontent.com/81913386/165032785-6072bbad-eec0-452c-a2c2-0e6f1726d0bb.png">
+
+
+[기능과 성능 추이](https://www.notion.so/a76d50093c494ffd96c27acca388ba0c)
+
+---
+
 ## 프로젝트 수행 절차 및 방법
 
 - 사전 조사 단계
@@ -131,16 +144,6 @@
         - 참고로 1, 2, 3번은 Batch size를 64로 진행했지만, 4번 방식의 경우 OOM이 발생하여 batch size를 60으로 진행
         - 2번과 4번 방식이 좋은 성능을 보인 이유는 새롭게 토큰을 추가하지 않고 이미 사전에 있는 토큰을 사용하였기 때문에 학습이 빠르게 되었기 때문이라고 예측
 
-### 최종
-
-- Public 3등, Private 5등
-
-<img width="492" alt="image" src="https://user-images.githubusercontent.com/81913386/165032752-82c13af6-3a67-4402-ae34-625168f04667.png">
-
-<img width="495" alt="image" src="https://user-images.githubusercontent.com/81913386/165032785-6072bbad-eec0-452c-a2c2-0e6f1726d0bb.png">
-
-
-[기능과 성능 추이](https://www.notion.so/a76d50093c494ffd96c27acca388ba0c)
 
 ## 자체 평가 의견
 
